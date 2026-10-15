@@ -140,7 +140,7 @@ export function connectSatoDCE(origin,intent='catalogue',freshWindow=false){
  else if(command==='select-set'||command==='select-challenge'){const {set,ch,challenges}=await openChallenge(e.data.setId,e.data.challengeId,command==='select-set');if(!ch){send({kind:'set-details',setId:String(set.id),challenges:challenges.map(c=>({id:String(c.id),name:String(c.name),completed:!!c.isCompleted?.()}))});}else{const options=await optionsFor(ch);send({kind:'challenge',options,solve:true});}}
   else if(command==='collection'){if(typeof window.__satoDCEReadCollection!=='function')throw Error('Mets le connecteur SatoDCE à jour.');const start=Number(e.data.start)||0;if(!Number.isSafeInteger(start)||start<0||start>100000)throw Error('Position de reprise invalide.');collectionCancelled=false;await window.__satoDCEReadCollection(start,page=>send({kind:'collection-page',...page}),()=>collectionCancelled||popup.closed);}
   else if(command==='catalog')send({kind:'catalog',...await catalog()});
-  else if(command==='fill')send({kind:'filled',...await fill(e.data)});
+  else if(command==='fill'){window.SatoFcApp?.showFc?.();send({kind:'filled',...await fill(e.data)});}
   else throw Error('Commande inconnue.');}
   catch(error){send({kind:command==='collection'?'collection-error':'error',message:error.message});}
   finally{if(command!=='import')busy=false;}
@@ -157,6 +157,8 @@ export function connectSatoDCE(origin,intent='catalogue',freshWindow=false){
  }):null;
  if(rewardObserver&&document.body)rewardObserver.observe(document.body,{subtree:true,childList:true,attributes:true,attributeFilter:['src','class'],characterData:true});
  readVisibleRewards();
- window.addEventListener('message',handler);window.addEventListener('message',reader);window.__easyDceDisconnect=()=>{rewardObserver?.disconnect();clearTimeout(rewardTimer);clearInterval(cleanup);window.removeEventListener('message',handler);window.removeEventListener('message',reader);};
+ window.__satoDceHasChallenge=()=>{try{challenge();return true;}catch{return false;}};
+ window.__satoDceSolve=async()=>{selectedChallenge=null;send({kind:'challenge',manualSolve:true,options:await optionsFor(challenge())});};
+ window.addEventListener('message',handler);window.addEventListener('message',reader);window.__easyDceDisconnect=()=>{delete window.__satoDceHasChallenge;delete window.__satoDceSolve;rewardObserver?.disconnect();clearTimeout(rewardTimer);clearInterval(cleanup);window.removeEventListener('message',handler);window.removeEventListener('message',reader);};
  const cleanup=setInterval(()=>{if(popup.closed){rewardObserver?.disconnect();clearTimeout(rewardTimer);clearInterval(cleanup);window.removeEventListener('message',handler);window.removeEventListener('message',reader);}},3000);
 }

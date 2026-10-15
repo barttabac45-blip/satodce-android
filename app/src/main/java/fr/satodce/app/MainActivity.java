@@ -15,6 +15,12 @@ import android.os.Environment;
 import android.os.Handler;
 import android.os.Looper;
 import android.os.Message;
+import android.os.SystemClock;
+import android.text.Spannable;
+import android.text.SpannableString;
+import android.text.style.ImageSpan;
+import android.graphics.drawable.Drawable;
+import android.view.MotionEvent;
 import android.provider.MediaStore;
 import android.util.Base64;
 import android.view.Gravity;
@@ -59,17 +65,29 @@ public class MainActivity extends Activity {
     FrameLayout content;
     WebView fc, sato;
     Button tabFc, tabSato;
+    Button solveInSato, syncAlbum;
+    final Runnable updateActions = new Runnable() {
+        @Override public void run() {
+            if (isFinishing() || isDestroyed()) return;
+            if (fc.getVisibility() == View.VISIBLE) fc.evaluateJavascript("!!window.__satoDceHasChallenge?.()", ready -> setChallengeActions("true".equals(ready)));
+            else setChallengeActions(false);
+            main.postDelayed(this, 1000);
+        }
+    };
     ValueCallback<Uri[]> fileCallback;
     Updater updater;
     boolean reconnectStarted, connectorRunning;
     final Runnable reconnect = new Runnable() {
         @Override public void run() {
-            if (reconnectStarted || connectorRunning || isFinishing()) return;
+            if (isFinishing() || isDestroyed()) return;
+            if (connectorRunning) { main.postDelayed(this, 2000); return; }
             fc.evaluateJavascript("(()=>{try{return !!document.querySelector('button.icon-sbc') && !!window.services?.User?.getUser?.()?.getSelectedPersona?.() && !!window.services?.SBC?.requestSets;}catch{return false;}})()", ready -> {
-                if ("true".equals(ready) && getPreferences(MODE_PRIVATE).getBoolean("reconnect", false)) {
+                if (isFinishing() || isDestroyed()) return;
+                if (!"true".equals(ready)) reconnectStarted = false;
+                else if (!reconnectStarted) {
                     reconnectStarted = true;
                     connectorRunning = true;
-                    try (InputStream in = getAssets().open("reconnect.js")) {
+                    try (InputStream in = getAssets().open("sync-team.js")) {
                         ByteArrayOutputStream out = new ByteArrayOutputStream();
                         byte[] buffer = new byte[16384];
                         for (int n; (n = in.read(buffer)) > 0;) out.write(buffer, 0, n);
@@ -77,7 +95,7 @@ public class MainActivity extends Activity {
                     } catch (Exception e) { reconnectStarted = false; }
                     connectorRunning = false;
                 }
-                if (!reconnectStarted) main.postDelayed(this, 2000);
+                main.postDelayed(this, 2000);
             });
         }
     };
@@ -91,6 +109,7 @@ public class MainActivity extends Activity {
         LinearLayout root = new LinearLayout(this);
         root.setOrientation(LinearLayout.VERTICAL);
         root.setBackgroundColor(getColor(R.color.background));
+        root.addView(topBar(), new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, dp(64)));
         content = new FrameLayout(this);
         root.addView(content, new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, 0, 1));
         root.addView(bottomBar(), new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, dp(64)));
@@ -108,6 +127,7 @@ public class MainActivity extends Activity {
         updater.check(false);
         handleLogin(getIntent());
         main.postDelayed(reconnect, 2000);
+        main.postDelayed(updateActions, 1000);
     }
 
     @Override
@@ -142,21 +162,86 @@ public class MainActivity extends Activity {
         bar.setGravity(Gravity.CENTER_VERTICAL);
         bar.setPadding(dp(6), dp(6), dp(6), dp(6));
         tabFc = tab("FC Web App", v -> show(fc));
-        Button connect = tab("⚡ SatoDCE", v -> connectorMenu());
-        connect.setTextColor(Color.WHITE);
-        GradientDrawable bg = new GradientDrawable();
-        bg.setColor(getColor(R.color.accent));
-        bg.setCornerRadius(dp(12));
-        connect.setBackground(bg);
-        connect.setBackgroundTintList(null);
-        connect.setTextColor(Color.WHITE);
         tabSato = tab("Site SatoDCE", v -> show(sato));
-        for (Button b : new Button[]{tabFc, connect, tabSato}) {
+        tabLogo(tabFc, R.drawable.ic_fc, "FC Web App");
+        tabLogo(tabSato, R.drawable.ic_sato, "Site SatoDCE");
+        tabSato.setOnLongClickListener(v -> { connectorMenu(); return true; });
+        for (Button b : new Button[]{tabFc, tabSato}) {
             LinearLayout.LayoutParams p = new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.MATCH_PARENT, 1);
             p.setMargins(dp(4), 0, dp(4), 0);
             bar.addView(b, p);
         }
         return bar;
+    }
+
+    View topBar() {
+        LinearLayout bar = new LinearLayout(this);
+        bar.setBackgroundColor(getColor(R.color.bar));
+        bar.setPadding(dp(6), dp(8), dp(6), dp(8));
+        Button home = tab("⌂", v -> {
+            if (fc.getVisibility() == View.VISIBLE) tapFcControl("button.icon-home", () -> show(sato));
+            else sato.evaluateJavascript("document.querySelector('[data-page=home]')?.click();window.scrollTo(0,0)", null);
+        });
+        home.setContentDescription("Accueil");
+        home.setTextSize(26);
+        home.setPadding(0, 0, 0, 0);
+        home.setMinWidth(0);
+        home.setMinimumWidth(0);
+        home.setBackground(pill(0xFF293241, 0xFF475569));
+        bar.addView(home, new LinearLayout.LayoutParams(dp(46), ViewGroup.LayoutParams.MATCH_PARENT));
+        syncAlbum = tab("↻ Synchroniser album", v -> runConnector("/collection-connector.txt"));
+        solveInSato = tab("Résoudre dans SatoDCE →", v -> fc.evaluateJavascript("window.__satoDceSolve?.().then(()=>SatoFcApp.showSato()).catch(e=>alert(e.message))", null));
+        tabLogo(solveInSato, R.drawable.ic_sato, "Résoudre dans SatoDCE");
+        solveInSato.setVisibility(View.GONE);
+        for (Button b : new Button[]{syncAlbum, solveInSato}) {
+            b.setTextSize(14);
+            b.setTextColor(Color.WHITE);
+            b.setPadding(dp(8), 0, dp(8), 0);
+            b.setMaxLines(2);
+            b.setBackground(pill(b == solveInSato ? 0xFF2563EB : 0xFF244D83, 0xFF609DF5));
+            b.setBackgroundTintList(null);
+            LinearLayout.LayoutParams p = new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.MATCH_PARENT, 1);
+            p.setMargins(dp(6), 0, 0, 0);
+            bar.addView(b, p);
+        }
+        solveInSato.setTextSize(16);
+        return bar;
+    }
+
+    GradientDrawable pill(int color, int border) {
+        GradientDrawable bg = new GradientDrawable();
+        bg.setColor(color);
+        bg.setCornerRadius(dp(16));
+        bg.setStroke(dp(1), border);
+        return bg;
+    }
+
+    void tabLogo(Button button, int icon, String label) {
+        Drawable drawable = getDrawable(icon);
+        drawable.setBounds(0, 0, dp(24), dp(24));
+        SpannableString text = new SpannableString("\uFFFC  " + label);
+        text.setSpan(new ImageSpan(drawable, ImageSpan.ALIGN_BOTTOM), 0, 1, Spannable.SPAN_EXCLUSIVE_EXCLUSIVE);
+        button.setText(text);
+        button.setContentDescription(label);
+    }
+
+    void setChallengeActions(boolean challenge) {
+        solveInSato.setVisibility(challenge ? View.VISIBLE : View.GONE);
+        syncAlbum.setVisibility(challenge ? View.GONE : View.VISIBLE);
+    }
+
+    void runBundledConnector(String asset) {
+        if (connectorRunning) return;
+        fc.evaluateJavascript("!!document.querySelector('button.icon-sbc')", ready -> {
+            if (!"true".equals(ready)) { show(fc); toast("Connecte-toi à FC pour synchroniser."); return; }
+            try (InputStream in = getAssets().open(asset)) {
+                ByteArrayOutputStream out = new ByteArrayOutputStream();
+                byte[] buffer = new byte[16384];
+                for (int n; (n = in.read(buffer)) > 0;) out.write(buffer, 0, n);
+                reconnectStarted = true;
+                fc.evaluateJavascript(out.toString("UTF-8"), null);
+            } catch (Exception e) { toast("Synchronisation indisponible."); }
+        });
     }
 
     Button tab(String text, View.OnClickListener click) {
@@ -176,12 +261,16 @@ public class MainActivity extends Activity {
         sato.setVisibility(view == sato ? View.VISIBLE : View.GONE);
         tabFc.setTextColor(getColor(view == fc ? R.color.text : R.color.muted));
         tabSato.setTextColor(getColor(view == sato ? R.color.text : R.color.muted));
+        tabFc.setBackground(pill(view == fc ? 0xFF2563EB : 0xFF202938, view == fc ? 0xFF7AAEFF : 0xFF42506A));
+        tabSato.setBackground(pill(view == sato ? 0xFF2563EB : 0xFF202938, view == sato ? 0xFF7AAEFF : 0xFF42506A));
+        tabFc.setSelected(view == fc);
+        tabSato.setSelected(view == sato);
+        if (view == sato) setChallengeActions(false);
     }
 
     /** Replaces the bookmarks: runs the same connector code inside the FC screen. */
     void connectorMenu() {
         String[] items = {
-            "Importer mon équipe et le DCE ouvert",
             "Synchroniser ma collection (album)",
             "Ouvrir la Web App FC",
             "Rechercher une mise à jour de l’appli"
@@ -189,9 +278,8 @@ public class MainActivity extends Activity {
         new AlertDialog.Builder(this)
             .setTitle("SatoDCE")
             .setItems(items, (d, which) -> {
-                if (which == 0) runConnector("/import-test.txt");
-                else if (which == 1) runConnector("/collection-connector.txt");
-                else if (which == 2) { show(fc); fc.loadUrl(FC_URL); }
+                if (which == 0) runConnector("/collection-connector.txt");
+                else if (which == 1) { show(fc); fc.loadUrl(FC_URL); }
                 else updater.check(true);
             })
             .show();
@@ -240,12 +328,19 @@ public class MainActivity extends Activity {
         s.setUserAgentString(s.getUserAgentString().replace("; wv", "").replaceAll("Version/\\d+(\\.\\d+)* ", ""));
         CookieManager.getInstance().setAcceptThirdPartyCookies(w, true);
         if (satoSide) w.addJavascriptInterface(new SatoBridge(), "SatoApp");
+        else w.addJavascriptInterface(new FcBridge(), "SatoFcApp");
         w.setWebViewClient(new WebViewClient() {
             /** EA asks tablets in portrait to rotate; its Web App works fine in portrait, so the warning is hidden. */
             @Override
             public void onPageFinished(WebView view, String url) {
                 if (url != null && url.contains("ea.com")) view.evaluateJavascript(ALLOW_PORTRAIT, null);
                 if (satoSide && url != null && Uri.parse(SITE).getHost().equals(Uri.parse(url).getHost())) {
+                    try (InputStream in = getAssets().open("site-controls.js")) {
+                        ByteArrayOutputStream out = new ByteArrayOutputStream();
+                        byte[] buffer = new byte[4096];
+                        for (int n; (n = in.read(buffer)) > 0;) out.write(buffer, 0, n);
+                        view.evaluateJavascript(out.toString("UTF-8"), null);
+                    } catch (Exception ignored) { }
                     view.evaluateJavascript("(()=>{try{const d=JSON.parse(localStorage.getItem('satodce-v1'));if(d?.players?.length&&!d.isDemo)SatoApp.enableReconnect();}catch{}if(window.__satoNativeReturn)return;window.__satoNativeReturn=true;window.addEventListener('message',e=>{if(e.origin!=='https://www.ea.com'||e.source!==window.opener||e.data?.type!=='SATODCE_FC'||e.data.token!==new URLSearchParams(location.search).get('fc'))return;if(e.data.kind==='filled')SatoApp.showFc();if(e.data.kind==='connected'&&e.data.resume)setTimeout(()=>{const s=document.querySelector('#fc-status');if(s)s.textContent='FC reconnecté · Club enregistré conservé.';},0);});})()", null);
                 }
             }
@@ -328,6 +423,13 @@ public class MainActivity extends Activity {
     }
 
     /** Functions the SatoDCE site may call when it runs inside the app. */
+    class FcBridge {
+        @JavascriptInterface
+        public void showFc() { main.post(() -> show(fc)); }
+        @JavascriptInterface
+        public void showSato() { main.post(() -> show(sato)); }
+    }
+
     class SatoBridge {
         @JavascriptInterface
         public void enableReconnect() {
@@ -380,15 +482,42 @@ public class MainActivity extends Activity {
     @Override
     protected void onDestroy() {
         main.removeCallbacks(reconnect);
+        main.removeCallbacks(updateActions);
         io.shutdownNow();
         super.onDestroy();
     }
 
     @Override
     public void onBackPressed() {
-        WebView current = sato.getVisibility() == View.VISIBLE ? sato : fc;
-        if (current.canGoBack()) current.goBack();
-        else super.onBackPressed();
+        if (fc.getVisibility() == View.VISIBLE) {
+            // FC is a single-page app: its own Back control does not always
+            // create a WebView history entry.
+            tapFcControl(".ut-navigation-button-control", () -> {
+                if (fc.canGoBack()) fc.goBack();
+                else show(sato);
+            });
+            return;
+        }
+        if (sato.canGoBack()) sato.goBack();
+        else {
+            // At the root, stay inside the app and return to its home screen.
+            sato.evaluateJavascript("(()=>{const b=document.querySelector('[data-page=home]');if(b)b.click();})()", null);
+        }
+    }
+
+    void tapFcControl(String selector, Runnable fallback) {
+        fc.evaluateJavascript("(()=>{const b=document.querySelector('" + selector + "');if(!b||!b.getClientRects().length)return null;const r=b.getBoundingClientRect();return [(r.x+r.width/2)*devicePixelRatio,(r.y+r.height/2)*devicePixelRatio];})()", result -> {
+            try {
+                org.json.JSONArray point = new org.json.JSONArray(result);
+                float x = (float) point.getDouble(0), y = (float) point.getDouble(1);
+                long time = SystemClock.uptimeMillis();
+                MotionEvent down = MotionEvent.obtain(time, time, MotionEvent.ACTION_DOWN, x, y, 0);
+                MotionEvent up = MotionEvent.obtain(time, time + 80, MotionEvent.ACTION_UP, x, y, 0);
+                fc.dispatchTouchEvent(down);
+                fc.dispatchTouchEvent(up);
+                down.recycle(); up.recycle();
+            } catch (Exception e) { fallback.run(); }
+        });
     }
 
     static String download(String address) throws Exception {

@@ -7,4 +7,5 @@ const source=`(()=>{${reader}\n(${bridge})('https://satodce.fr','resume',true);}
 const dir=new URL('./app/src/main/assets/',import.meta.url);
 await mkdir(dir,{recursive:true});
 await writeFile(new URL('reconnect.js',dir),source);
+await writeFile(new URL('sync-team.js',dir),`(()=>{${reader}\n(${connectSatoDCE.toString()})('https://satodce.fr','club',true);})();`);
 console.log('Android reconnect connector built');
