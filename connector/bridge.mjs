@@ -128,6 +128,18 @@ export function connectSatoDCE(origin,intent='catalogue',freshWindow=false){
   const visual=(method,id)=>{if(id===undefined||id===null||id==='')return '';try{const value=window.AssetLocationUtils?.[method]?.(id);if(!value)return '';const u=new URL(value,location.href);return u.protocol==='https:'?u.href:'';}catch{return '';}};return lastCatalog={syncedAt:new Date().toISOString(),sets:Array.from(sets).map(set=>({id:String(set.id),name:(rewardCache.get('icon:'+visual('getSquadBuildingSetImageUri',set.assetId))||rewardCache.get(rewardKey(set.name)))?.title||String(set.name||'DCE FC'),description:(rewardCache.get('icon:'+visual('getSquadBuildingSetImageUri',set.assetId))||rewardCache.get(rewardKey(set.name)))?.description||String(set.description||''),iconUrl:visual('getSquadBuildingSetImageUri',set.assetId),rewardImageUrl:(rewardCache.get('icon:'+visual('getSquadBuildingSetImageUri',set.assetId))||rewardCache.get(rewardKey(set.name)))?.imageUrl||visual('getSquadBuildingRewardImageUri',set.getPreviewImageId?.()),rewardName:(rewardCache.get('icon:'+visual('getSquadBuildingSetImageUri',set.assetId))||rewardCache.get(rewardKey(set.name)))?.name||String(set.awards?.[0]?.name||set.awards?.[0]?.description||''),completed:state(set,'isComplete'),expired:state(set,'hasExpired'),repeatable:!!set.isRepeatable,timesCompleted:Number.isFinite(set.timesCompleted)?set.timesCompleted:null,endTime:!set.notExpirable&&Number.isFinite(set.endTime)?set.endTime:null,completedCount:Number.isFinite(set.challengesCompletedCount)?set.challengesCompletedCount:null,challengeCount:Number.isFinite(set.challengesCount)?set.challengesCount:null,challenges:Array.from(set.getChallenges?.()??[]).map(ch=>({id:String(ch.id),name:String(ch.name||'Défi FC'),completed:state(ch,'isCompleted'),expired:state(ch,'hasExpired'),timesCompleted:Number.isFinite(ch.timesCompleted)?ch.timesCompleted:null}))}))};
  }
  let collectionCancelled=false;
+ // Album purchase: FC's own market results for one exact card, then the whole-market cheapest search.
+ async function openMarket(definitionId){
+  if(!Number.isSafeInteger(definitionId)||definitionId<=0)throw Error('Joueur invalide.');
+  const nav=window.getAppMain?.()?.getRootViewController?.()?.getPresentedViewController?.()?.getCurrentViewController?.();
+  if(typeof nav?.pushViewController!=='function'||typeof window.UTSearchCriteriaDTO!=='function')throw Error('La Web App FC n’est pas prête : affiche son accueil (et quitte FUT sur la console) puis réessaie.');
+  const criteria=new window.UTSearchCriteriaDTO();Object.assign(criteria,{type:'player',defId:[definitionId],isExactSearch:true});
+  window.services.Item.marketRepository?.reset?.();
+  const Results=window.isPhone?.()?window.UTMarketSearchResultsViewController:window.UTMarketSearchResultsSplitViewController;
+  const results=new Results();results.initWithSearchCriteria(criteria);nav.pushViewController(results);
+  for(let i=0;i<40;i++){await new Promise(r=>setTimeout(r,250));const button=document.querySelector('.satodce-market-cheapest');if(button&&!button.disabled){button.click();return {message:'Marché FC ouvert : recherche du moins cher sur tout le marché…'};}}
+  return {message:'Marché FC ouvert sur ce joueur.'};
+ }
  const handler=async e=>{
   if(e.source!==popup||e.origin!==origin||e.data?.token!==token||e.data.type!=='SATODCE_COMMAND')return;
   const command=e.data.command;
@@ -140,6 +152,7 @@ export function connectSatoDCE(origin,intent='catalogue',freshWindow=false){
  else if(command==='select-set'||command==='select-challenge'){const {set,ch,challenges}=await openChallenge(e.data.setId,e.data.challengeId,command==='select-set');if(!ch){send({kind:'set-details',setId:String(set.id),challenges:challenges.map(c=>({id:String(c.id),name:String(c.name),completed:!!c.isCompleted?.()}))});}else{const options=await optionsFor(ch);send({kind:'challenge',options,solve:true});}}
   else if(command==='collection'){if(typeof window.__satoDCEReadCollection!=='function')throw Error('Mets le connecteur SatoDCE à jour.');const start=Number(e.data.start)||0;if(!Number.isSafeInteger(start)||start<0||start>100000)throw Error('Position de reprise invalide.');collectionCancelled=false;await window.__satoDCEReadCollection(start,page=>send({kind:'collection-page',...page}),()=>collectionCancelled||popup.closed);}
   else if(command==='catalog')send({kind:'catalog',...await catalog()});
+  else if(command==='buy'){window.SatoFcApp?.showFc?.();send({kind:'market',...await openMarket(Number(e.data.definitionId))});}
   else if(command==='fill'){window.SatoFcApp?.showFc?.();send({kind:'filled',...await fill(e.data)});}
   else throw Error('Commande inconnue.');}
   catch(error){send({kind:command==='collection'?'collection-error':'error',message:error.message});}
