@@ -307,6 +307,10 @@ public class MainActivity extends Activity {
         @JavascriptInterface
         public String version() { return BuildConfig.VERSION_NAME; }
 
+        /** After "Placer dans le DCE FC": show the filled DCE in the FC tab. */
+        @JavascriptInterface
+        public void showFc() { main.post(() -> show(fc)); }
+
         @JavascriptInterface
         public void saveFile(String dataUrl, String name) {
             try {
