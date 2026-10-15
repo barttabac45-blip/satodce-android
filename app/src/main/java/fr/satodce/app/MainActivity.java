@@ -38,6 +38,7 @@ import android.widget.Button;
 import android.widget.FrameLayout;
 import android.widget.LinearLayout;
 import android.widget.Toast;
+import android.widget.EditText;
 
 import java.io.ByteArrayOutputStream;
 import java.io.InputStream;
@@ -66,6 +67,43 @@ public class MainActivity extends Activity {
     WebView fc, sato;
     Button tabFc, tabSato;
     Button solveInSato, syncAlbum;
+    int profileSlot() { return 0; }
+    @SuppressWarnings("deprecation")
+    android.content.SharedPreferences profiles() { return getSharedPreferences("local-profiles", MODE_PRIVATE | MODE_MULTI_PROCESS); }
+    String profileName(int slot) { return profiles().getString("name-" + slot, slot == 0 ? "Compte actuel" : "Compte " + (slot + 1)); }
+    void chooseProfile() {
+        if (Build.VERSION.SDK_INT < 28) { toast("Les profils séparés nécessitent Android 9 ou plus récent."); return; }
+        String[] labels = new String[5];
+        for (int slot = 0; slot < 4; slot++) labels[slot] = (slot == profileSlot() ? "✓ " : "") + profileName(slot) + (profiles().getBoolean("created-" + slot, slot == 0) ? "" : " · Ajouter");
+        labels[4] = "Renommer ce profil";
+        new AlertDialog.Builder(this).setTitle("Comptes FC + SatoDCE")
+            .setItems(labels, (dialog, selected) -> {
+                if (selected == 4) { nameProfile(profileSlot(), false); return; }
+                if (!profiles().getBoolean("created-" + selected, selected == 0)) nameProfile(selected, true);
+                else switchProfile(selected);
+            }).setNegativeButton("Fermer", null).show();
+    }
+    void nameProfile(int slot, boolean open) {
+        EditText name = new EditText(this);name.setSingleLine();name.setText(profileName(slot));
+        name.setSelectAllOnFocus(true);name.setPadding(dp(20), dp(12), dp(20), dp(12));
+        new AlertDialog.Builder(this).setTitle(open ? "Ajouter une paire de comptes" : "Nom du profil")
+            .setMessage("Connecte ton compte EA et le compte SatoDCE associé dans ce profil. Leurs sessions et données restent séparées des autres profils.")
+            .setView(name).setPositiveButton("Enregistrer", (dialog, which) -> {
+                String label = name.getText().toString().trim();
+                if (label.isEmpty()) label = "Compte " + (slot + 1);
+                profiles().edit().putString("name-" + slot, label.substring(0, Math.min(40, label.length()))).putBoolean("created-" + slot, true).commit();
+                if (open) switchProfile(slot);
+            }).setNegativeButton("Annuler", null).show();
+    }
+    void switchProfile(int slot) {
+        if (slot == profileSlot()) return;
+        CookieManager.getInstance().flush();
+        Class<?>[] activities = {MainActivity.class, ProfileOneActivity.class, ProfileTwoActivity.class, ProfileThreeActivity.class};
+        profiles().edit().putInt("active", slot).commit();
+        Intent next = new Intent(this, activities[slot]);next.putExtra("profile-selected", true);
+        next.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TOP);
+        startActivity(next);finish();
+    }
     final Runnable updateActions = new Runnable() {
         @Override public void run() {
             if (isFinishing() || isDestroyed()) return;
@@ -103,6 +141,12 @@ public class MainActivity extends Activity {
     @Override
     protected void onCreate(Bundle state) {
         super.onCreate(state);
+        // Browser login callbacks are delivered to the launcher activity; send
+        // them back to the selected profile before accessing its cookie store.
+        if (profileSlot() == 0 && getIntent().getData() != null && profiles().getInt("active", 0) != 0 && Build.VERSION.SDK_INT >= 28) {
+            Class<?>[] activities = {MainActivity.class, ProfileOneActivity.class, ProfileTwoActivity.class, ProfileThreeActivity.class};
+            startActivity(new Intent(this, activities[profiles().getInt("active", 0)]).setData(getIntent().getData()).putExtra("profile-selected", true));finish();return;
+        }
         CookieManager.getInstance().setAcceptCookie(true);
         // Debug builds only: lets Chrome DevTools inspect the screens.
         WebView.setWebContentsDebuggingEnabled(BuildConfig.DEBUG);
@@ -128,6 +172,7 @@ public class MainActivity extends Activity {
         handleLogin(getIntent());
         main.postDelayed(reconnect, 2000);
         main.postDelayed(updateActions, 1000);
+        if (Build.VERSION.SDK_INT >= 28 && state == null && !getIntent().getBooleanExtra("profile-selected", false) && getIntent().getData() == null) chooseProfile();
     }
 
     @Override
@@ -141,6 +186,10 @@ public class MainActivity extends Activity {
     @Override
     protected void onNewIntent(Intent intent) {
         super.onNewIntent(intent);
+        if (profileSlot() == 0 && intent.getData() != null && profiles().getInt("active", 0) != 0 && Build.VERSION.SDK_INT >= 28) {
+            Class<?>[] activities = {MainActivity.class, ProfileOneActivity.class, ProfileTwoActivity.class, ProfileThreeActivity.class};
+            startActivity(new Intent(this, activities[profiles().getInt("active", 0)]).setData(intent.getData()).putExtra("profile-selected", true));return;
+        }
         handleLogin(intent);
     }
 
@@ -189,6 +238,12 @@ public class MainActivity extends Activity {
         home.setMinimumWidth(0);
         home.setBackground(pill(0xFF293241, 0xFF475569));
         bar.addView(home, new LinearLayout.LayoutParams(dp(46), ViewGroup.LayoutParams.MATCH_PARENT));
+        Button accounts = tab("Comptes", v -> chooseProfile());
+        accounts.setTextSize(11);accounts.setPadding(0,0,0,0);accounts.setMinWidth(0);accounts.setMinimumWidth(0);
+        accounts.setContentDescription("Choisir les comptes FC et SatoDCE");
+        accounts.setBackground(pill(0xFF293241, 0xFF475569));
+        LinearLayout.LayoutParams accountParams = new LinearLayout.LayoutParams(dp(60), ViewGroup.LayoutParams.MATCH_PARENT);
+        accountParams.setMargins(dp(5), 0, 0, 0);bar.addView(accounts, accountParams);
         syncAlbum = tab("↻ Synchroniser album", v -> runConnector("/collection-connector.txt"));
         solveInSato = tab("Résoudre dans SatoDCE →", v -> fc.evaluateJavascript("window.__satoDceSolve?.().then(()=>SatoFcApp.showSato()).catch(e=>alert(e.message))", null));
         tabLogo(solveInSato, R.drawable.ic_sato, "Résoudre dans SatoDCE");
@@ -338,6 +393,12 @@ public class MainActivity extends Activity {
                     try (InputStream in = getAssets().open("market-hints.js")) {
                         ByteArrayOutputStream out = new ByteArrayOutputStream();
                         byte[] buffer = new byte[8192];
+                        for (int n; (n = in.read(buffer)) > 0;) out.write(buffer, 0, n);
+                        view.evaluateJavascript(out.toString("UTF-8"), null);
+                    } catch (Exception ignored) { }
+                    try (InputStream in = getAssets().open("fc-login-layout.js")) {
+                        ByteArrayOutputStream out = new ByteArrayOutputStream();
+                        byte[] buffer = new byte[4096];
                         for (int n; (n = in.read(buffer)) > 0;) out.write(buffer, 0, n);
                         view.evaluateJavascript(out.toString("UTF-8"), null);
                     } catch (Exception ignored) { }
@@ -492,6 +553,8 @@ public class MainActivity extends Activity {
         main.removeCallbacks(reconnect);
         main.removeCallbacks(updateActions);
         io.shutdownNow();
+        if (fc != null) { fc.stopLoading(); fc.destroy(); }
+        if (sato != null) { sato.stopLoading(); sato.destroy(); }
         super.onDestroy();
     }
 

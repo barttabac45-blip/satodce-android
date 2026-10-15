@@ -34,6 +34,21 @@ moment du placement.
 
 ## Mises à jour
 
+## Comptes locaux (Android 9 et plus)
+
+Le bouton **Comptes**, visible dans FC et SatoDCE, permet de choisir jusqu’à
+quatre profils. Chaque profil conserve séparément les sessions EA et SatoDCE,
+le club, l’album et les préférences. Connecte une première fois les deux comptes
+associés dans le profil choisi ; changer de profil bascule ensuite les deux
+écrans ensemble. Le profil **Compte actuel** conserve les données déjà présentes.
+Les mots de passe EA ne sont pas enregistrés par SatoDCE ; la session officielle
+EA est conservée localement et EA peut demander une nouvelle connexion.
+
+Le sélecteur ne détecte pas automatiquement les associations entre comptes :
+c’est la paire connectée dans chaque profil qui est mémorisée. Utilise le bouton
+Comptes pour changer de paire ; les connexions effectuées directement dans les
+sites concernent uniquement le profil ouvert.
+
 Dans les résultats du marché, l’offre au prix Achat immédiat le plus bas parmi
 les résultats affichés est mise en évidence pour chaque version exacte. Si une
 seule version est affichée, elle est sélectionnée automatiquement, sans achat.

@@ -6,6 +6,7 @@
     <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES" />
 
     <application
+        android:name=".SatoApplication"
         android:allowBackup="false"
         android:icon="@mipmap/ic_launcher"
         android:roundIcon="@mipmap/ic_launcher"
@@ -31,5 +32,8 @@
                 <data android:scheme="satodce" android:host="login" />
             </intent-filter>
         </activity>
+        <activity android:name=".ProfileOneActivity" android:process=":profile1" android:exported="false" android:launchMode="singleTask" android:configChanges="orientation|screenSize|screenLayout|keyboardHidden|smallestScreenSize|uiMode" android:windowSoftInputMode="adjustResize" />
+        <activity android:name=".ProfileTwoActivity" android:process=":profile2" android:exported="false" android:launchMode="singleTask" android:configChanges="orientation|screenSize|screenLayout|keyboardHidden|smallestScreenSize|uiMode" android:windowSoftInputMode="adjustResize" />
+        <activity android:name=".ProfileThreeActivity" android:process=":profile3" android:exported="false" android:launchMode="singleTask" android:configChanges="orientation|screenSize|screenLayout|keyboardHidden|smallestScreenSize|uiMode" android:windowSoftInputMode="adjustResize" />
     </application>
 </manifest>
