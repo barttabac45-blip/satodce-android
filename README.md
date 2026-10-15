@@ -22,6 +22,11 @@ avant ton clic. Le bouton maison revient à l’accueil de l’écran utilisé ;
 revient aux écrans précédents sans fermer l’application. Un appui long sur l’onglet
 SatoDCE ouvre les options et la recherche de mises à jour.
 
+Sur le marché des transferts, **Moins cher sur tout le marché** cherche l’offre la moins
+chère de la carte sur toutes les pages (quelques recherches espacées) puis la sélectionne.
+Dans la mise en vente, **Un palier sous le moins cher du marché** remplit le prix d’achat
+immédiat juste sous l’offre la moins chère. Rien n’est acheté ni mis en vente sans ton appui.
+
 La connexion à ton compte SatoDCE (Google) se fait dans le navigateur du téléphone, puis l’appli reprend la main automatiquement.
 
 L’équipe est synchronisée automatiquement dès que le compte FC est connecté,
