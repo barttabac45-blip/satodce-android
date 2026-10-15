@@ -1,0 +1,54 @@
+plugins {
+    id 'com.android.application'
+}
+
+// Release signing comes from signing.properties (never committed): storeFile,
+// storePassword, keyAlias, keyPassword. Without it, only debug builds are possible.
+def signingProps = new Properties()
+def signingFile = rootProject.file('signing.properties')
+if (signingFile.exists()) signingFile.withInputStream { signingProps.load(it) }
+
+android {
+    namespace 'fr.satodce.app'
+    compileSdk 35
+
+    defaultConfig {
+        applicationId 'fr.satodce.app'
+        minSdk 26
+        targetSdk 34
+        versionCode 1
+        versionName '1.0.0'
+        // Releases are published here; the app checks them to update itself.
+        buildConfigField 'String', 'GITHUB_REPO', '"barttabac45-blip/satodce-android"'
+        buildConfigField 'String', 'SITE', '"https://satodce.fr"'
+    }
+
+    buildFeatures { buildConfig true }
+
+    signingConfigs {
+        release {
+            if (signingFile.exists()) {
+                storeFile file(signingProps['storeFile'])
+                storePassword signingProps['storePassword']
+                keyAlias signingProps['keyAlias']
+                keyPassword signingProps['keyPassword']
+            }
+        }
+    }
+
+    buildTypes {
+        release {
+            minifyEnabled false
+            if (signingFile.exists()) signingConfig signingConfigs.release
+        }
+    }
+
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_17
+        targetCompatibility JavaVersion.VERSION_17
+    }
+
+    applicationVariants.all { variant ->
+        variant.outputs.all { outputFileName = "SatoDCE-${variant.buildType.name}-v${variant.versionName}.apk" }
+    }
+}
