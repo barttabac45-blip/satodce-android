@@ -70,12 +70,20 @@ public class MainActivity extends Activity {
     int profileSlot() { return 0; }
     @SuppressWarnings("deprecation")
     android.content.SharedPreferences profiles() { return getSharedPreferences("local-profiles", MODE_PRIVATE | MODE_MULTI_PROCESS); }
-    String profileName(int slot) { return profiles().getString("name-" + slot, slot == 0 ? "Compte actuel" : "Compte " + (slot + 1)); }
+    /** Number of EA + SatoDCE account pairs (the first one always exists). */
+    int profileCount() { int n = 1; for (int slot = 1; slot < 4; slot++) if (profiles().getBoolean("created-" + slot, false)) n++; return n; }
+    /** From the ⚡ menu: opens the next free profile, or the picker once all four exist. */
+    void addAccount() {
+        if (Build.VERSION.SDK_INT < 28) { toast("Plusieurs comptes nécessitent Android 9 ou plus récent."); return; }
+        for (int slot = 1; slot < 4; slot++) if (!profiles().getBoolean("created-" + slot, false)) { nameProfile(slot, true); return; }
+        chooseProfile();
+    }
+    String profileName(int slot) { return profiles().getString("email-" + slot, profiles().getString("name-" + slot, "Adresse e-mail à connecter")); }
     void chooseProfile() {
         if (Build.VERSION.SDK_INT < 28) { toast("Les profils séparés nécessitent Android 9 ou plus récent."); return; }
         String[] labels = new String[5];
         for (int slot = 0; slot < 4; slot++) labels[slot] = (slot == profileSlot() ? "✓ " : "") + profileName(slot) + (profiles().getBoolean("created-" + slot, slot == 0) ? "" : " · Ajouter");
-        labels[4] = "Renommer ce profil";
+        labels[4] = "Renseigner l’adresse e-mail";
         new AlertDialog.Builder(this).setTitle("Comptes FC + SatoDCE")
             .setItems(labels, (dialog, selected) -> {
                 if (selected == 4) { nameProfile(profileSlot(), false); return; }
@@ -84,14 +92,15 @@ public class MainActivity extends Activity {
             }).setNegativeButton("Fermer", null).show();
     }
     void nameProfile(int slot, boolean open) {
-        EditText name = new EditText(this);name.setSingleLine();name.setText(profileName(slot));
+        EditText name = new EditText(this);name.setSingleLine();name.setInputType(android.text.InputType.TYPE_CLASS_TEXT | android.text.InputType.TYPE_TEXT_VARIATION_EMAIL_ADDRESS);name.setHint("adresse@exemple.fr");
+        String savedEmail = profiles().getString("email-" + slot, "");name.setText(savedEmail);
         name.setSelectAllOnFocus(true);name.setPadding(dp(20), dp(12), dp(20), dp(12));
         new AlertDialog.Builder(this).setTitle(open ? "Ajouter une paire de comptes" : "Nom du profil")
             .setMessage("Connecte ton compte EA et le compte SatoDCE associé dans ce profil. Leurs sessions et données restent séparées des autres profils.")
             .setView(name).setPositiveButton("Enregistrer", (dialog, which) -> {
                 String label = name.getText().toString().trim();
-                if (label.isEmpty()) label = "Compte " + (slot + 1);
-                profiles().edit().putString("name-" + slot, label.substring(0, Math.min(40, label.length()))).putBoolean("created-" + slot, true).commit();
+                if (!android.util.Patterns.EMAIL_ADDRESS.matcher(label).matches()) { toast("Renseigne une adresse e-mail valide."); return; }
+                profiles().edit().putString("email-" + slot, label).putBoolean("created-" + slot, true).commit();
                 if (open) switchProfile(slot);
             }).setNegativeButton("Annuler", null).show();
     }
@@ -114,25 +123,34 @@ public class MainActivity extends Activity {
     };
     ValueCallback<Uri[]> fileCallback;
     Updater updater;
-    boolean reconnectStarted, connectorRunning;
+    boolean reconnectStarted, connectorRunning, backgroundSync;
+    volatile boolean accountConnected;
+    int readyChecks, disconnectedChecks;
     final Runnable reconnect = new Runnable() {
         @Override public void run() {
             if (isFinishing() || isDestroyed()) return;
+            if (!accountConnected) { main.postDelayed(this, 2000); return; }
             if (connectorRunning) { main.postDelayed(this, 2000); return; }
             fc.evaluateJavascript("(()=>{try{return !!document.querySelector('button.icon-sbc') && !!window.services?.User?.getUser?.()?.getSelectedPersona?.() && !!window.services?.SBC?.requestSets;}catch{return false;}})()", ready -> {
                 if (isFinishing() || isDestroyed()) return;
-                if (!"true".equals(ready)) reconnectStarted = false;
-                else if (!reconnectStarted) {
+                if (!"true".equals(ready)) {
+                    readyChecks = 0;
+                    if (++disconnectedChecks >= 3) reconnectStarted = false;
+                }
+                else if (!reconnectStarted && ++readyChecks >= 3) {
+                    disconnectedChecks = 0;
                     reconnectStarted = true;
                     connectorRunning = true;
+                    backgroundSync = true;
                     try (InputStream in = getAssets().open("sync-team.js")) {
                         ByteArrayOutputStream out = new ByteArrayOutputStream();
                         byte[] buffer = new byte[16384];
                         for (int n; (n = in.read(buffer)) > 0;) out.write(buffer, 0, n);
                         fc.evaluateJavascript(out.toString("UTF-8"), null);
-                    } catch (Exception e) { reconnectStarted = false; }
+                    } catch (Exception e) { reconnectStarted = false; backgroundSync = false; }
                     connectorRunning = false;
                 }
+                else if ("true".equals(ready)) disconnectedChecks = 0;
                 main.postDelayed(this, 2000);
             });
         }
@@ -172,7 +190,8 @@ public class MainActivity extends Activity {
         handleLogin(getIntent());
         main.postDelayed(reconnect, 2000);
         main.postDelayed(updateActions, 1000);
-        if (Build.VERSION.SDK_INT >= 28 && state == null && !getIntent().getBooleanExtra("profile-selected", false) && getIntent().getData() == null) chooseProfile();
+        // A single account never sees the profile picker: it only appears once a second EA account was added.
+        if (Build.VERSION.SDK_INT >= 28 && state == null && profileCount() > 1 && !getIntent().getBooleanExtra("profile-selected", false) && getIntent().getData() == null) chooseProfile();
     }
 
     @Override
@@ -244,6 +263,7 @@ public class MainActivity extends Activity {
         accounts.setBackground(pill(0xFF293241, 0xFF475569));
         LinearLayout.LayoutParams accountParams = new LinearLayout.LayoutParams(dp(60), ViewGroup.LayoutParams.MATCH_PARENT);
         accountParams.setMargins(dp(5), 0, 0, 0);bar.addView(accounts, accountParams);
+        if (profileCount() < 2) accounts.setVisibility(View.GONE); // invisible with a single account
         syncAlbum = tab("↻ Synchroniser album", v -> runConnector("/collection-connector.txt"));
         solveInSato = tab("Résoudre dans SatoDCE →", v -> fc.evaluateJavascript("window.__satoDceSolve?.().then(()=>SatoFcApp.showSato()).catch(e=>alert(e.message))", null));
         tabLogo(solveInSato, R.drawable.ic_sato, "Résoudre dans SatoDCE");
@@ -328,19 +348,22 @@ public class MainActivity extends Activity {
         String[] items = {
             "Synchroniser ma collection (album)",
             "Ouvrir la Web App FC",
-            "Rechercher une mise à jour de l’appli"
+            "Rechercher une mise à jour de l’appli",
+            "Ajouter un autre compte EA"
         };
         new AlertDialog.Builder(this)
             .setTitle("SatoDCE")
             .setItems(items, (d, which) -> {
                 if (which == 0) runConnector("/collection-connector.txt");
                 else if (which == 1) { show(fc); fc.loadUrl(FC_URL); }
-                else updater.check(true);
+                else if (which == 2) updater.check(true);
+                else addAccount();
             })
             .show();
     }
 
     void runConnector(String path) {
+        if (!accountConnected) { show(sato); sato.evaluateJavascript("window.dispatchEvent(new Event('satodce-open-account'))", null); toast("Connecte-toi à SatoDCE avant d’importer."); return; }
         if (connectorRunning) return;
         if (fc.getUrl() == null || !fc.getUrl().contains("/ultimate-team/web-app")) {
             show(fc);
@@ -434,6 +457,8 @@ public class MainActivity extends Activity {
             @Override
             public boolean onCreateWindow(WebView view, boolean dialog, boolean gesture, Message result) {
                 if (view != fc) return openExternally(result);
+                boolean keepFcVisible = backgroundSync;
+                backgroundSync = false;
                 getPreferences(MODE_PRIVATE).edit().putBoolean("reconnect", true).apply();
                 WebView popup = newWebView(true);
                 content.removeView(sato);
@@ -442,7 +467,10 @@ public class MainActivity extends Activity {
                 content.addView(sato, 0);
                 ((WebView.WebViewTransport) result.obj).setWebView(popup);
                 result.sendToTarget();
-                show(sato);
+                // Automatic sync must not replace the visible FC screen with
+                // a newly created, still empty site WebView.
+                if (keepFcVisible) show(fc);
+                else show(sato);
                 return true;
             }
 
@@ -500,6 +528,13 @@ public class MainActivity extends Activity {
     }
 
     class SatoBridge {
+        @JavascriptInterface
+        public void setAccountConnected(boolean connected) { accountConnected = connected; if (!connected) reconnectStarted = false; }
+        @JavascriptInterface
+        public void setProfileEmail(String email) {
+            if (email != null && email.length() <= 254 && android.util.Patterns.EMAIL_ADDRESS.matcher(email).matches())
+                profiles().edit().putString("email-" + profileSlot(), email).apply();
+        }
         @JavascriptInterface
         public void enableReconnect() {
             getPreferences(MODE_PRIVATE).edit().putBoolean("reconnect", true).apply();

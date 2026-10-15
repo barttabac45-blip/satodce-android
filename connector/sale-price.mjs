@@ -35,7 +35,7 @@ export function installSalePrice(undercut){
     if(n.viewmodel._collection[n.viewmodel._index]!==item||!root.isConnected)throw Error('La carte sélectionnée a changé.');
     const price=undercut(best,limits.minimum,limits.maximum);
     quick.setBuyNowValue(price);quick.setBidValue(undercut(price,limits.minimum,limits.maximum));
-    button.textContent='Prix rempli : '+price.toLocaleString('fr-FR')+' cr. · À confirmer dans FC';
+    button.textContent=price<best?'Marché : '+best.toLocaleString('fr-FR')+' → Vente : '+price.toLocaleString('fr-FR')+' cr.':'Minimum FC atteint : '+price.toLocaleString('fr-FR')+' cr.';
    }catch(e){button.textContent=e.message;}finally{busy=false;button.disabled=false;}};
   }
   for(const key of ['currentController','leftController','rightController','childViewControllers']){const v=n[key];if(Array.isArray(v))q.push(...v);else if(v)q.push(v);}
