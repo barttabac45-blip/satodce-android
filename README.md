@@ -12,7 +12,7 @@ Appli Android officielle de [SatoDCE](https://satodce.fr) : la Web App FC et Sat
 ## Utiliser
 
 1. Onglet **FC Web App** : connecte-toi à ton compte EA comme d’habitude.
-2. L’équipe se synchronise automatiquement après la connexion FC. En haut, **Synchroniser album** permet de mettre à jour l’album depuis FC ou SatoDCE.
+2. L’équipe se synchronise automatiquement après la connexion FC. En haut, **Équipe** permet de relancer l’import du club, de l’équipe et des DCE ; **Album** met à jour la collection depuis FC ou SatoDCE.
 3. SatoDCE s’ouvre, calcule la solution ; *Placer dans le DCE FC* remplit le DCE et te ramène automatiquement dans l’onglet FC après confirmation du placement. Tu peux ensuite valider le DCE dans FC.
 
 Les deux onglets du bas (**FC Web App** et **Site SatoDCE**) affichent leur logo et

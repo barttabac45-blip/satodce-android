@@ -66,7 +66,7 @@ public class MainActivity extends Activity {
     FrameLayout content;
     WebView fc, sato;
     Button tabFc, tabSato;
-    Button solveInSato, syncAlbum;
+    Button solveInSato, syncAlbum, syncTeam;
     int profileSlot() { return 0; }
     @SuppressWarnings("deprecation")
     android.content.SharedPreferences profiles() { return getSharedPreferences("local-profiles", MODE_PRIVATE | MODE_MULTI_PROCESS); }
@@ -263,12 +263,14 @@ public class MainActivity extends Activity {
         accounts.setBackground(pill(0xFF293241, 0xFF475569));
         LinearLayout.LayoutParams accountParams = new LinearLayout.LayoutParams(dp(60), ViewGroup.LayoutParams.MATCH_PARENT);
         accountParams.setMargins(dp(5), 0, 0, 0);bar.addView(accounts, accountParams);
-        if (profileCount() < 2) accounts.setVisibility(View.GONE); // invisible with a single account
-        syncAlbum = tab("↻ Synchroniser album", v -> runConnector("/collection-connector.txt"));
+        syncTeam = tab("↻ Équipe", v -> runConnector("/import-test.txt"));
+        syncTeam.setContentDescription("Synchroniser le club, l’équipe et les DCE");
+        syncAlbum = tab("↻ Album", v -> runConnector("/collection-connector.txt"));
+        syncAlbum.setContentDescription("Synchroniser l’album");
         solveInSato = tab("Résoudre dans SatoDCE →", v -> fc.evaluateJavascript("window.__satoDceSolve?.().then(()=>SatoFcApp.showSato()).catch(e=>alert(e.message))", null));
         tabLogo(solveInSato, R.drawable.ic_sato, "Résoudre dans SatoDCE");
         solveInSato.setVisibility(View.GONE);
-        for (Button b : new Button[]{syncAlbum, solveInSato}) {
+        for (Button b : new Button[]{syncTeam, syncAlbum, solveInSato}) {
             b.setTextSize(14);
             b.setTextColor(Color.WHITE);
             b.setPadding(dp(8), 0, dp(8), 0);
@@ -302,6 +304,7 @@ public class MainActivity extends Activity {
 
     void setChallengeActions(boolean challenge) {
         solveInSato.setVisibility(challenge ? View.VISIBLE : View.GONE);
+        syncTeam.setVisibility(challenge ? View.GONE : View.VISIBLE);
         syncAlbum.setVisibility(challenge ? View.GONE : View.VISIBLE);
     }
 
