@@ -1,5 +1,7 @@
 import {readFile,writeFile,mkdir} from 'node:fs/promises';
 import {connectSatoDCE} from './connector/bridge.mjs';
+import {cheapestOffers,installMarketHints} from './connector/market-offers.mjs';
+import {undercutPrice,installSalePrice} from './connector/sale-price.mjs';
 const reader=await readFile(new URL('./connector/fc-reader.js',import.meta.url),'utf8');
 // Version 3 prevents older hosted sites from automatically importing on hello.
 const bridge=connectSatoDCE.toString().replace("version:4,intent,", "version:3,resume:true,intent,");
@@ -8,4 +10,5 @@ const dir=new URL('./app/src/main/assets/',import.meta.url);
 await mkdir(dir,{recursive:true});
 await writeFile(new URL('reconnect.js',dir),source);
 await writeFile(new URL('sync-team.js',dir),`(()=>{${reader}\n(${connectSatoDCE.toString()})('https://satodce.fr','club',true);})();`);
+await writeFile(new URL('market-hints.js',dir),`(${installMarketHints.toString()})(${cheapestOffers.toString()});(${installSalePrice.toString()})(${undercutPrice.toString()});`);
 console.log('Android reconnect connector built');

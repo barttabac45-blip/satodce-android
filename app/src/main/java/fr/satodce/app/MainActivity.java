@@ -334,6 +334,14 @@ public class MainActivity extends Activity {
             @Override
             public void onPageFinished(WebView view, String url) {
                 if (url != null && url.contains("ea.com")) view.evaluateJavascript(ALLOW_PORTRAIT, null);
+                if (!satoSide && url != null && url.startsWith(FC_URL)) {
+                    try (InputStream in = getAssets().open("market-hints.js")) {
+                        ByteArrayOutputStream out = new ByteArrayOutputStream();
+                        byte[] buffer = new byte[8192];
+                        for (int n; (n = in.read(buffer)) > 0;) out.write(buffer, 0, n);
+                        view.evaluateJavascript(out.toString("UTF-8"), null);
+                    } catch (Exception ignored) { }
+                }
                 if (satoSide && url != null && Uri.parse(SITE).getHost().equals(Uri.parse(url).getHost())) {
                     try (InputStream in = getAssets().open("site-controls.js")) {
                         ByteArrayOutputStream out = new ByteArrayOutputStream();

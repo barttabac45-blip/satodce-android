@@ -34,6 +34,12 @@ moment du placement.
 
 ## Mises à jour
 
+Dans les résultats du marché, l’offre au prix Achat immédiat le plus bas parmi
+les résultats affichés est mise en évidence pour chaque version exacte. Si une
+seule version est affichée, elle est sélectionnée automatiquement, sans achat.
+Sur l’écran de vente, **Un palier sous le moins cher** compare la même version et
+remplit les prix en respectant les limites FC. La mise en vente reste manuelle.
+
 L’appli vérifie les nouvelles versions publiées ici et propose de les installer (menu **⚡ SatoDCE → Rechercher une mise à jour**). Le connecteur FC est téléchargé depuis satodce.fr à chaque utilisation : il est toujours à jour sans réinstaller l’appli.
 
 ## Construire
