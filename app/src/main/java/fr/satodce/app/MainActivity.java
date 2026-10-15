@@ -61,6 +61,26 @@ public class MainActivity extends Activity {
     Button tabFc, tabSato;
     ValueCallback<Uri[]> fileCallback;
     Updater updater;
+    boolean reconnectStarted, connectorRunning;
+    final Runnable reconnect = new Runnable() {
+        @Override public void run() {
+            if (reconnectStarted || connectorRunning || isFinishing()) return;
+            fc.evaluateJavascript("(()=>{try{return !!document.querySelector('button.icon-sbc') && !!window.services?.User?.getUser?.()?.getSelectedPersona?.() && !!window.services?.SBC?.requestSets;}catch{return false;}})()", ready -> {
+                if ("true".equals(ready) && getPreferences(MODE_PRIVATE).getBoolean("reconnect", false)) {
+                    reconnectStarted = true;
+                    connectorRunning = true;
+                    try (InputStream in = getAssets().open("reconnect.js")) {
+                        ByteArrayOutputStream out = new ByteArrayOutputStream();
+                        byte[] buffer = new byte[16384];
+                        for (int n; (n = in.read(buffer)) > 0;) out.write(buffer, 0, n);
+                        fc.evaluateJavascript(out.toString("UTF-8"), null);
+                    } catch (Exception e) { reconnectStarted = false; }
+                    connectorRunning = false;
+                }
+                if (!reconnectStarted) main.postDelayed(this, 2000);
+            });
+        }
+    };
 
     @Override
     protected void onCreate(Bundle state) {
@@ -87,6 +107,7 @@ public class MainActivity extends Activity {
         updater = new Updater(this);
         updater.check(false);
         handleLogin(getIntent());
+        main.postDelayed(reconnect, 2000);
     }
 
     @Override
@@ -177,12 +198,14 @@ public class MainActivity extends Activity {
     }
 
     void runConnector(String path) {
+        if (connectorRunning) return;
         if (fc.getUrl() == null || !fc.getUrl().contains("/ultimate-team/web-app")) {
             show(fc);
             toast("Ouvre et connecte d’abord la Web App FC, puis relance.");
             return;
         }
         show(fc);
+        connectorRunning = true;
         toast("Connexion de SatoDCE à FC…");
         io.execute(() -> {
             try {
@@ -190,9 +213,9 @@ public class MainActivity extends Activity {
                 if (code.startsWith("javascript:")) code = code.substring("javascript:".length());
                 if (code.contains("%3D") || code.contains("%7B")) code = URLDecoder.decode(code, "UTF-8");
                 final String js = code;
-                main.post(() -> fc.evaluateJavascript(js, null));
+                main.post(() -> { connectorRunning = false; reconnectStarted = true; fc.evaluateJavascript(js, null); });
             } catch (Exception e) {
-                main.post(() -> toast("Connecteur indisponible : vérifie ta connexion internet."));
+                main.post(() -> { connectorRunning = false; toast("Connecteur indisponible : vérifie ta connexion internet."); });
             }
         });
     }
@@ -222,6 +245,9 @@ public class MainActivity extends Activity {
             @Override
             public void onPageFinished(WebView view, String url) {
                 if (url != null && url.contains("ea.com")) view.evaluateJavascript(ALLOW_PORTRAIT, null);
+                if (satoSide && url != null && Uri.parse(SITE).getHost().equals(Uri.parse(url).getHost())) {
+                    view.evaluateJavascript("(()=>{try{const d=JSON.parse(localStorage.getItem('satodce-v1'));if(d?.players?.length&&!d.isDemo)SatoApp.enableReconnect();}catch{}if(window.__satoNativeReturn)return;window.__satoNativeReturn=true;window.addEventListener('message',e=>{if(e.origin!=='https://www.ea.com'||e.source!==window.opener||e.data?.type!=='SATODCE_FC'||e.data.token!==new URLSearchParams(location.search).get('fc'))return;if(e.data.kind==='filled')SatoApp.showFc();if(e.data.kind==='connected'&&e.data.resume)setTimeout(()=>{const s=document.querySelector('#fc-status');if(s)s.textContent='FC reconnecté · Club enregistré conservé.';},0);});})()", null);
+                }
             }
 
             @Override
@@ -234,10 +260,17 @@ public class MainActivity extends Activity {
             }
         });
         w.setWebChromeClient(new WebChromeClient() {
+            /** window.opener.focus() returns to the existing FC screen after placement. */
+            @Override
+            public void onRequestFocus(WebView view) {
+                if (view == fc) show(fc);
+            }
+
             /** The connector opens SatoDCE with window.open: it becomes the SatoDCE screen, linked to FC. */
             @Override
             public boolean onCreateWindow(WebView view, boolean dialog, boolean gesture, Message result) {
                 if (view != fc) return openExternally(result);
+                getPreferences(MODE_PRIVATE).edit().putBoolean("reconnect", true).apply();
                 WebView popup = newWebView(true);
                 content.removeView(sato);
                 sato.destroy();
@@ -297,6 +330,10 @@ public class MainActivity extends Activity {
     /** Functions the SatoDCE site may call when it runs inside the app. */
     class SatoBridge {
         @JavascriptInterface
+        public void enableReconnect() {
+            getPreferences(MODE_PRIVATE).edit().putBoolean("reconnect", true).apply();
+        }
+        @JavascriptInterface
         public void openLogin() {
             main.post(() -> {
                 try { startActivity(new Intent(Intent.ACTION_VIEW, Uri.parse(SITE + "/app-login.html"))); }
@@ -338,6 +375,13 @@ public class MainActivity extends Activity {
             fileCallback = null;
         }
         if (request == Updater.PERMISSION_REQUEST) updater.resume();
+    }
+
+    @Override
+    protected void onDestroy() {
+        main.removeCallbacks(reconnect);
+        io.shutdownNow();
+        super.onDestroy();
     }
 
     @Override
