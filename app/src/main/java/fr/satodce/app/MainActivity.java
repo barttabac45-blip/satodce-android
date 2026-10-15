@@ -125,6 +125,7 @@ public class MainActivity extends Activity {
     Updater updater;
     boolean reconnectStarted, connectorRunning, backgroundSync;
     volatile boolean accountConnected;
+    boolean accountPanelRequested;
     int readyChecks, disconnectedChecks;
     final Runnable reconnect = new Runnable() {
         @Override public void run() {
@@ -336,8 +337,9 @@ public class MainActivity extends Activity {
 
     void show(WebView view) {
         if (view == fc && !accountConnected) {
+            accountPanelRequested = true;
             show(sato);
-            sato.evaluateJavascript("window.dispatchEvent(new Event('satodce-open-account'))", null);
+            openAccountPanel();
             toast("Connecte-toi à ton compte SatoDCE pour accéder à FC.");
             return;
         }
@@ -350,6 +352,11 @@ public class MainActivity extends Activity {
         tabFc.setSelected(view == fc);
         tabSato.setSelected(view == sato);
         if (view == sato) setChallengeActions(false);
+    }
+
+    void openAccountPanel() {
+        // The site boots asynchronously; wait for its account page to be ready.
+        sato.evaluateJavascript("(()=>{if(window.__satoAccountWait)return;let attempts=0;const open=()=>{if(document.documentElement.dataset.ready==='true'){window.dispatchEvent(new Event('satodce-open-account'));return true;}return false;};if(open())return;window.__satoAccountWait=setInterval(()=>{if(open()||++attempts>120){clearInterval(window.__satoAccountWait);window.__satoAccountWait=null;}},250);})()", null);
     }
 
     /** Replaces the bookmarks: runs the same connector code inside the FC screen. */
@@ -436,6 +443,7 @@ public class MainActivity extends Activity {
                     } catch (Exception ignored) { }
                 }
                 if (satoSide && url != null && Uri.parse(SITE).getHost().equals(Uri.parse(url).getHost())) {
+                    if (accountPanelRequested) { accountPanelRequested = false; openAccountPanel(); }
                     try (InputStream in = getAssets().open("site-controls.js")) {
                         ByteArrayOutputStream out = new ByteArrayOutputStream();
                         byte[] buffer = new byte[4096];
