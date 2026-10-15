@@ -7,7 +7,6 @@ import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
-import android.content.SharedPreferences;
 import android.content.pm.PackageInstaller;
 import android.net.Uri;
 import android.os.Build;
@@ -35,21 +34,20 @@ class Updater {
     static final String ACTION_STATUS = "fr.satodce.app.INSTALL_STATUS";
     final Activity activity;
     final Handler main = new Handler(Looper.getMainLooper());
-    final SharedPreferences prefs;
+    volatile boolean checking;
     String pendingUrl, pendingVersion;
 
     Updater(Activity activity) {
         this.activity = activity;
-        this.prefs = activity.getSharedPreferences("updates", Context.MODE_PRIVATE);
     }
 
-    /** Automatic checks run at most every 6 hours; a manual check always runs. */
+    /** Check on every launch, including when the previous check failed. */
     void check(boolean manual) {
-        long last = prefs.getLong("lastCheck", 0);
-        if (!manual && System.currentTimeMillis() - last < 6 * 3600_000L) return;
-        prefs.edit().putLong("lastCheck", System.currentTimeMillis()).apply();
+        if (checking) return;
+        checking = true;
         if (manual) toast("Recherche d’une mise à jour…");
-        Executors.newSingleThreadExecutor().execute(() -> {
+        java.util.concurrent.ExecutorService worker = Executors.newSingleThreadExecutor();
+        worker.execute(() -> {
             try {
                 JSONObject release = new JSONObject(MainActivity.download("https://api.github.com/repos/" + BuildConfig.GITHUB_REPO + "/releases/latest"));
                 String version = release.getString("tag_name").replaceFirst("^v", "");
@@ -64,6 +62,9 @@ class Updater {
                 else if (manual) main.post(() -> toast("SatoDCE est à jour (version " + BuildConfig.VERSION_NAME + ")."));
             } catch (Exception e) {
                 if (manual) main.post(() -> toast("Impossible de vérifier les mises à jour pour le moment."));
+            } finally {
+                checking = false;
+                worker.shutdown();
             }
         });
     }
@@ -82,7 +83,7 @@ class Updater {
     }
 
     void offer(String version, String url, String notes) {
-        if (activity.isFinishing()) return;
+        if (activity.isFinishing() || activity.isDestroyed()) return;
         String message = "La version " + version + " est disponible (installée : " + BuildConfig.VERSION_NAME + ").";
         if (!notes.isEmpty()) message += "\n\n" + (notes.length() > 600 ? notes.substring(0, 600) + "…" : notes);
         new AlertDialog.Builder(activity)

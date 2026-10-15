@@ -183,7 +183,7 @@ public class MainActivity extends Activity {
         content.addView(fc);
         if (state != null) { fc.restoreState(state.getBundle("fc")); sato.restoreState(state.getBundle("sato")); }
         else { fc.loadUrl(FC_URL); sato.loadUrl(SITE + "/"); }
-        show(fc);
+        show(sato);
 
         updater = new Updater(this);
         updater.check(false);
@@ -335,6 +335,12 @@ public class MainActivity extends Activity {
     }
 
     void show(WebView view) {
+        if (view == fc && !accountConnected) {
+            show(sato);
+            sato.evaluateJavascript("window.dispatchEvent(new Event('satodce-open-account'))", null);
+            toast("Connecte-toi à ton compte SatoDCE pour accéder à FC.");
+            return;
+        }
         fc.setVisibility(view == fc ? View.VISIBLE : View.GONE);
         sato.setVisibility(view == sato ? View.VISIBLE : View.GONE);
         tabFc.setTextColor(getColor(view == fc ? R.color.text : R.color.muted));
@@ -532,7 +538,15 @@ public class MainActivity extends Activity {
 
     class SatoBridge {
         @JavascriptInterface
-        public void setAccountConnected(boolean connected) { accountConnected = connected; if (!connected) reconnectStarted = false; }
+        public void setAccountConnected(boolean connected) {
+            main.post(() -> {
+                accountConnected = connected;
+                if (!connected) {
+                    reconnectStarted = false;
+                    if (fc.getVisibility() == View.VISIBLE) show(sato);
+                }
+            });
+        }
         @JavascriptInterface
         public void setProfileEmail(String email) {
             if (email != null && email.length() <= 254 && android.util.Patterns.EMAIL_ADDRESS.matcher(email).matches())
