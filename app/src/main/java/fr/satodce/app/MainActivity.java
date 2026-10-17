@@ -184,7 +184,7 @@ public class MainActivity extends Activity {
         content.addView(fc);
         if (state != null) { fc.restoreState(state.getBundle("fc")); sato.restoreState(state.getBundle("sato")); }
         else { fc.loadUrl(FC_URL); sato.loadUrl(SITE + "/"); }
-        show(sato);
+        show(fc);
 
         updater = new Updater(this);
         updater.check(false);
@@ -336,13 +336,6 @@ public class MainActivity extends Activity {
     }
 
     void show(WebView view) {
-        if (view == fc && !accountConnected) {
-            accountPanelRequested = true;
-            show(sato);
-            openAccountPanel();
-            toast("Connecte-toi à ton compte SatoDCE pour accéder à FC.");
-            return;
-        }
         fc.setVisibility(view == fc ? View.VISIBLE : View.GONE);
         sato.setVisibility(view == sato ? View.VISIBLE : View.GONE);
         tabFc.setTextColor(getColor(view == fc ? R.color.text : R.color.muted));
@@ -551,7 +544,6 @@ public class MainActivity extends Activity {
                 accountConnected = connected;
                 if (!connected) {
                     reconnectStarted = false;
-                    if (fc.getVisibility() == View.VISIBLE) show(sato);
                 }
             });
         }
