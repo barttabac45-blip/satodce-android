@@ -35,6 +35,8 @@ class Updater {
     final Activity activity;
     final Handler main = new Handler(Looper.getMainLooper());
     volatile boolean checking;
+    long lastAutomaticCheck;
+    String offeredVersion;
     String pendingUrl, pendingVersion;
 
     Updater(Activity activity) {
@@ -44,6 +46,9 @@ class Updater {
     /** Check on every launch, including when the previous check failed. */
     void check(boolean manual) {
         if (checking) return;
+        long now = android.os.SystemClock.elapsedRealtime();
+        if (!manual && lastAutomaticCheck != 0 && now - lastAutomaticCheck < 60000) return;
+        if (!manual) lastAutomaticCheck = now;
         checking = true;
         if (manual) toast("Recherche d’une mise à jour…");
         java.util.concurrent.ExecutorService worker = Executors.newSingleThreadExecutor();
@@ -58,7 +63,9 @@ class Updater {
                     if (asset.getString("name").endsWith(".apk")) apk = asset.getString("browser_download_url");
                 }
                 final String url = apk;
-                if (url != null && newer(version, BuildConfig.VERSION_NAME)) main.post(() -> offer(version, url, release.optString("body", "")));
+                if (url != null && newer(version, BuildConfig.VERSION_NAME)) main.post(() -> {
+                    if (manual || !version.equals(offeredVersion)) offer(version, url, release.optString("body", ""));
+                });
                 else if (manual) main.post(() -> toast("SatoDCE est à jour (version " + BuildConfig.VERSION_NAME + ")."));
             } catch (Exception e) {
                 if (manual) main.post(() -> toast("Impossible de vérifier les mises à jour pour le moment."));
@@ -84,6 +91,7 @@ class Updater {
 
     void offer(String version, String url, String notes) {
         if (activity.isFinishing() || activity.isDestroyed()) return;
+        offeredVersion = version;
         String message = "La version " + version + " est disponible (installée : " + BuildConfig.VERSION_NAME + ").";
         if (!notes.isEmpty()) message += "\n\n" + (notes.length() > 600 ? notes.substring(0, 600) + "…" : notes);
         new AlertDialog.Builder(activity)

@@ -12,7 +12,7 @@ Appli Android officielle de [SatoDCE](https://satodce.fr) : la Web App FC et Sat
 ## Utiliser
 
 1. Connecte-toi d’abord à ton compte **SatoDCE**, puis ouvre l’onglet **FC Web App** pour te connecter à EA. L’accès à FC reste bloqué tant que SatoDCE n’est pas connecté.
-2. L’équipe se synchronise automatiquement après la connexion FC. En haut, **Équipe** permet de relancer l’import du club, de l’équipe et des DCE ; **Album** met à jour la collection depuis FC ou SatoDCE.
+2. En haut, **Équipe** permet de lancer l’import du club, de l’équipe et des DCE ; **Album** met à jour la collection depuis FC ou SatoDCE.
 3. SatoDCE s’ouvre, calcule la solution ; *Placer dans le DCE FC* remplit le DCE et te ramène automatiquement dans l’onglet FC après confirmation du placement. Tu peux ensuite valider le DCE dans FC.
 
 Les deux onglets du bas (**FC Web App** et **Site SatoDCE**) affichent leur logo et
@@ -29,10 +29,8 @@ immédiat juste sous l’offre la moins chère. Rien n’est acheté ni mis en v
 
 La connexion à ton compte SatoDCE (Google) se fait dans le navigateur du téléphone, puis l’appli reprend la main automatiquement.
 
-L’équipe est synchronisée automatiquement dès que le compte FC est connecté,
-y compris après la toute première connexion, à chaque réouverture de l’appli et
-après une déconnexion suivie d’une reconnexion à FC.
-Les cartes enregistrées restent disponibles pendant cette actualisation.
+La connexion FC conserve les cartes enregistrées sans lancer de synchronisation.
+Appuie sur **Équipe** pour importer ou actualiser ton club, ton équipe et les DCE.
 Si EA demande une nouvelle connexion, reconnecte-toi dans l’onglet FC ; le lien
 reprend ensuite automatiquement. Les cartes choisies sont vérifiées dans FC au
 moment du placement.

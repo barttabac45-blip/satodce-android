@@ -143,7 +143,7 @@ public class MainActivity extends Activity {
                     reconnectStarted = true;
                     connectorRunning = true;
                     backgroundSync = true;
-                    try (InputStream in = getAssets().open("sync-team.js")) {
+                    try (InputStream in = getAssets().open("reconnect.js")) {
                         ByteArrayOutputStream out = new ByteArrayOutputStream();
                         byte[] buffer = new byte[16384];
                         for (int n; (n = in.read(buffer)) > 0;) out.write(buffer, 0, n);
@@ -484,7 +484,7 @@ public class MainActivity extends Activity {
                 content.addView(sato, 0);
                 ((WebView.WebViewTransport) result.obj).setWebView(popup);
                 result.sendToTarget();
-                // Automatic sync must not replace the visible FC screen with
+                // Automatic reconnect must not replace the visible FC screen with
                 // a newly created, still empty site WebView.
                 if (keepFcVisible) show(fc);
                 else show(sato);
@@ -608,8 +608,30 @@ public class MainActivity extends Activity {
         if (request == Updater.PERMISSION_REQUEST) updater.resume();
     }
 
+    final Runnable checkUpdates = new Runnable() {
+        @Override public void run() {
+            if (isFinishing() || isDestroyed()) return;
+            if (updater != null) updater.check(false);
+            main.postDelayed(this, 15 * 60 * 1000);
+        }
+    };
+
+    @Override
+    protected void onResume() {
+        super.onResume();
+        main.removeCallbacks(checkUpdates);
+        main.post(checkUpdates);
+    }
+
+    @Override
+    protected void onPause() {
+        main.removeCallbacks(checkUpdates);
+        super.onPause();
+    }
+
     @Override
     protected void onDestroy() {
+        main.removeCallbacks(checkUpdates);
         main.removeCallbacks(reconnect);
         main.removeCallbacks(updateActions);
         io.shutdownNow();
