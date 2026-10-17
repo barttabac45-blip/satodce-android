@@ -16,8 +16,8 @@ android {
         applicationId 'fr.satodce.app'
         minSdk 26
         targetSdk 34
-        versionCode 17
-        versionName '1.0.16'
+        versionCode 18
+        versionName '1.0.17'
         // Releases are published here; the app checks them to update itself.
         buildConfigField 'String', 'GITHUB_REPO', '"barttabac45-blip/satodce-android"'
         buildConfigField 'String', 'SITE', '"https://satodce.fr"'

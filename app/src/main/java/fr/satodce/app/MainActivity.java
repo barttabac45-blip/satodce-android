@@ -115,25 +115,26 @@ public class MainActivity extends Activity {
     }
     final Runnable updateActions = new Runnable() {
         @Override public void run() {
-            if (isFinishing() || isDestroyed()) return;
+            if (!foreground || isFinishing() || isDestroyed()) return;
             if (fc.getVisibility() == View.VISIBLE) fc.evaluateJavascript("!!window.__satoDceHasChallenge?.()", ready -> setChallengeActions("true".equals(ready)));
             else setChallengeActions(false);
-            main.postDelayed(this, 1000);
+            main.postDelayed(this, 2000);
         }
     };
     ValueCallback<Uri[]> fileCallback;
     Updater updater;
+    boolean foreground;
     boolean reconnectStarted, connectorRunning, backgroundSync;
     volatile boolean accountConnected;
     boolean accountPanelRequested;
     int readyChecks, disconnectedChecks;
     final Runnable reconnect = new Runnable() {
         @Override public void run() {
-            if (isFinishing() || isDestroyed()) return;
+            if (!foreground || isFinishing() || isDestroyed()) return;
             if (!accountConnected) { main.postDelayed(this, 2000); return; }
             if (connectorRunning) { main.postDelayed(this, 2000); return; }
             fc.evaluateJavascript("(()=>{try{return !!document.querySelector('button.icon-sbc') && !!window.services?.User?.getUser?.()?.getSelectedPersona?.() && !!window.services?.SBC?.requestSets;}catch{return false;}})()", ready -> {
-                if (isFinishing() || isDestroyed()) return;
+                if (!foreground || isFinishing() || isDestroyed()) return;
                 if (!"true".equals(ready)) {
                     readyChecks = 0;
                     if (++disconnectedChecks >= 3) reconnectStarted = false;
@@ -152,7 +153,7 @@ public class MainActivity extends Activity {
                     connectorRunning = false;
                 }
                 else if ("true".equals(ready)) disconnectedChecks = 0;
-                main.postDelayed(this, 2000);
+                main.postDelayed(this, reconnectStarted ? 10000 : 2000);
             });
         }
     };
@@ -189,8 +190,6 @@ public class MainActivity extends Activity {
         updater = new Updater(this);
         updater.check(false);
         handleLogin(getIntent());
-        main.postDelayed(reconnect, 2000);
-        main.postDelayed(updateActions, 1000);
         // A single account never sees the profile picker: it only appears once a second EA account was added.
         if (Build.VERSION.SDK_INT >= 28 && state == null && profileCount() > 1 && !getIntent().getBooleanExtra("profile-selected", false) && getIntent().getData() == null) chooseProfile();
     }
@@ -611,12 +610,20 @@ public class MainActivity extends Activity {
     @Override
     protected void onResume() {
         super.onResume();
+        foreground = true;
+        main.removeCallbacks(reconnect);
+        main.removeCallbacks(updateActions);
+        main.postDelayed(reconnect, 2000);
+        main.post(updateActions);
         main.removeCallbacks(checkUpdates);
         main.post(checkUpdates);
     }
 
     @Override
     protected void onPause() {
+        foreground = false;
+        main.removeCallbacks(reconnect);
+        main.removeCallbacks(updateActions);
         main.removeCallbacks(checkUpdates);
         super.onPause();
     }

@@ -43,6 +43,7 @@ export function installMarketHints(choose,market,undercut){
  function clear(){restore(document);for(const e of document.querySelectorAll('.satodce-best-offer'))e.classList.remove('satodce-best-offer');}
  const viewRows=node=>node?.getView?.()?._list?.getRows?.()||[];
  function tick(){try{
+  if(document.hidden)return;
   const queue=[window._appMain?._rootViewController],seen=new Set();let rows=null,root=null,owner=null;
   while(queue.length&&seen.size<150){const node=queue.shift();if(!node||typeof node!=='object'||seen.has(node))continue;seen.add(node);
    const view=node.getView?.(),element=view?.getRootElement?.();
@@ -52,6 +53,8 @@ export function installMarketHints(choose,market,undercut){
   if(!rows){if(activeRoot)clear();activeRoot=null;previous='';return;}
   addSearchButton(owner,root,()=>viewRows(owner));
   const best=choose(rows),winners=new Map(best.map(b=>[b.row,b]));
+  const signature=rows.map(r=>r.data?._auction?.tradeId||r.data?.id).join(',')+'|'+best.map(b=>b.row.data?._auction?.tradeId+':'+b.price).join(',');
+  if(root===activeRoot&&signature===previous&&rows.every(row=>{const e=row.getRootElement?.();return !e||e.classList.contains('satodce-best-offer')===winners.has(row)&&(!winners.has(row)||!!e.querySelector('.satodce-price-hint'));}))return;
   for(const row of rows){const element=row.getRootElement?.();if(!element)continue;const offer=winners.get(row),old=element.querySelector('.satodce-price-hint');
    element.classList.toggle('satodce-best-offer',!!offer);
    if(!offer){restore(element);continue;}
@@ -61,7 +64,6 @@ export function installMarketHints(choose,market,undercut){
    if(badge.textContent!==text)badge.textContent=text;
    if(!old){if(!label.dataset.satodceOriginalLabel)label.dataset.satodceOriginalLabel=label.textContent;label.replaceChildren(badge);}
   }
-  const signature=rows.map(r=>r.data?._auction?.tradeId||r.data?.id).join(',')+'|'+best.map(b=>b.row.data?._auction?.tradeId+':'+b.price).join(',');
   if((root!==activeRoot||signature!==previous)&&best.length===1){const row=best[0].row;row.tapCallback?.(row.data);row.getRootElement?.()?.scrollIntoView({block:'nearest'});}
   activeRoot=root;previous=signature;
  }catch{clear();}}

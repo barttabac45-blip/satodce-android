@@ -6,7 +6,7 @@ export function undercutPrice(price,minimum,maximum){
 export function installSalePrice(undercut,market){
  window.__satoSaleCleanup?.();
  let busy=false;const selectedItems=new WeakMap();
- function tick(){try{const q=[window._appMain?._rootViewController],seen=new Set();while(q.length&&seen.size<150){const n=q.shift();if(!n||seen.has(n))continue;seen.add(n);
+ function tick(){try{if(document.hidden)return;const q=[window._appMain?._rootViewController],seen=new Set();while(q.length&&seen.size<150){const n=q.shift();if(!n||seen.has(n))continue;seen.add(n);
   const quick=n.panel?.quickListView,root=quick?.getRootElement?.();
   if(root?.isConnected&&root.getClientRects().length&&quick._btnToggle?.getRootElement?.().classList.contains('open')){
    const selected=n.viewmodel?._collection?.[n.viewmodel._index];
