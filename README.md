@@ -25,11 +25,12 @@ SatoDCE ouvre les options et la recherche de mises à jour.
 Sur le marché et dans **Comparer les prix**, **Comparer les pages suivantes** parcourt
 les pages à partir de la page ouverte, avec des pauses variables et un bouton d’arrêt.
 Le prix le plus bas observé est mémorisé par version de carte, sans sélection automatique.
-À l’ouverture du panneau de vente, l’appli ouvre les résultats FC de cette version,
-parcourt les pages depuis la première, puis préremplit les prix un palier sous le minimum.
-Le bouton d’arrêt est disponible pendant le parcours. En cas d’arrêt ou d’erreur,
-les prix restent inchangés. La mise en vente reste manuelle. Les prix ne concernent que les pages
-consultées et les offres non expirées observées depuis moins de 15 minutes.
+À l’ouverture de « Lister / Relister l’élément », l’appli recherche en arrière-plan le
+prix le plus bas de la version exacte du joueur sur tout le marché, sans ouvrir
+l’écran du marché. Elle indique le minimum dans le panneau sous la carte et préremplit
+les prix un palier en dessous, dans les limites FC. La recherche abaisse le plafond
+d’achat immédiat jusqu’à vérifier qu’aucune offre moins chère n’existe, quelle que soit
+sa page. En cas d’arrêt ou d’erreur, les prix restent inchangés. La mise en vente reste manuelle.
 Les pauses variables ne garantissent pas que cette automatisation soit acceptée par EA.
 
 La connexion à ton compte SatoDCE (Google) se fait dans le navigateur du téléphone, puis l’appli reprend la main automatiquement.

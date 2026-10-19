@@ -14,18 +14,18 @@ export function installSalePrice(undercut,compare){
    const selected=n.viewmodel?._collection?.[n.viewmodel._index];
    if(!busy&&selected?.type==='player'&&selectedItems.get(root)!==selected){
     selectedItems.set(root,selected);root.querySelector('.satodce-sale-price')?.remove();
-    const button=document.createElement('button');button.type='button';button.className='satodce-sale-price';button.textContent='Comparer le marché et préremplir';root.insertBefore(button,root.firstChild);
+    const button=document.createElement('button');button.type='button';button.className='satodce-sale-price';button.style.cssText='display:block;box-sizing:border-box;width:calc(100% - 16px);margin:8px;padding:12px;border:1px solid #b9f46c;border-radius:12px;background:#1c3a12;color:#e8ffd0;font:bold 14px system-ui;white-space:normal;';button.textContent='Recherche du prix le plus bas…';root.insertBefore(button,root.firstChild);
     const run=async()=>{
      if(busy){cancelled=true;button.textContent='Arrêt de la comparaison…';return;}
      if(window.__satoPriceScanBusy){button.textContent='Une comparaison est déjà en cours.';return;}
      busy=true;cancelled=false;window.__satoPriceScanBusy=true;window.__satoCancelPriceScan=()=>{cancelled=true;};
      const item=n.viewmodel?._collection?.[n.viewmodel._index];
-     const unchanged=()=>!disposed&&!cancelled&&root.isConnected&&n.viewmodel?._collection?.[n.viewmodel._index]===item&&quick._btnToggle?.getRootElement?.().classList.contains('open');
+     const unchanged=()=>!disposed&&!cancelled&&!document.hidden&&root.isConnected&&root.getClientRects().length>0&&n.viewmodel?._collection?.[n.viewmodel._index]===item&&quick._btnToggle?.getRootElement?.().classList.contains('open');
      try{
       if(item?.type!=='player'||!Number.isSafeInteger(item.definitionId))throw Error('Carte joueur indisponible.');
       const limits=item._itemPriceLimits;if(!limits)throw Error('Limites FC indisponibles.');
       button.textContent='Comparaison du marché… Appuie pour arrêter.';
-      const found=await compare(item,{isCancelled:()=>!unchanged(),onProgress:pages=>{button.textContent='Arrêter — '+pages+' page(s) consultée(s)';}});
+      const found=await compare(item,{isCancelled:()=>!unchanged(),onProgress:requests=>{button.textContent='Recherche du moins cher sur tout le marché… '+requests+' vérification(s). Appuie pour arrêter.';}});
       if(!unchanged())throw Error('Comparaison interrompue : prix inchangés.');
       if(!found.verified)throw Error('Comparaison incomplète : prix inchangés.');
       if(found.price===null){button.textContent='Aucune offre disponible : choisis ton prix.';return;}
@@ -33,7 +33,7 @@ export function installSalePrice(undercut,compare){
       const floor=Math.min(max,min+(min<1000?50:min<10000?100:min<50000?250:min<100000?500:1000));
       const price=Math.max(floor,undercut(found.price,min,max));
       quick.setBidValue(undercut(price,min,max));quick.setBuyNowValue(price);
-      button.textContent='Marché : '+found.price.toLocaleString('fr-FR')+' → Vente : '+price.toLocaleString('fr-FR')+' cr. — Refaire la comparaison';
+      button.textContent='Moins cher sur tout le marché : '+found.price.toLocaleString('fr-FR')+' cr. — Ton prix : '+price.toLocaleString('fr-FR')+' cr. — Actualiser';
      }catch(e){button.textContent=e.message+' Appuie pour réessayer.';}finally{busy=false;window.__satoPriceScanBusy=false;window.__satoCancelPriceScan=null;}
     };
     button.addEventListener('click',run);void run();

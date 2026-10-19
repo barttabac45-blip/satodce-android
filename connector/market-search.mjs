@@ -2,8 +2,8 @@
 // FC sorts results by end time, not price: instead of reading every page, each search lowers the
 // maximum buy-now price below the best price seen, so a few spaced searches prove the minimum.
 export async function findCheapestOnMarket({definitionId,excludeId=null,minimum,maximum},{search,wait,undercut,maxSearches=Infinity,spacing=3000}){
- if(!Number.isSafeInteger(definitionId)||!Number.isSafeInteger(minimum)||!Number.isSafeInteger(maximum))throw Error('Carte ou limites FC indisponibles.');
- let ceiling=maximum,best=null,searches=0,page=1;
+ if(!Number.isSafeInteger(definitionId)||!Number.isSafeInteger(minimum)||!Number.isSafeInteger(maximum)||minimum<=0||maximum<minimum)throw Error('Carte ou limites FC indisponibles.');
+ let ceiling=maximum,best=null,searches=0,page=1;const seenPages=new Set();
  while(searches<maxSearches){
   if(searches)await wait(spacing);
   let items;
@@ -13,17 +13,17 @@ export async function findCheapestOnMarket({definitionId,excludeId=null,minimum,
   searches++;
   if(!Array.isArray(items))throw Error('Résultats FC indisponibles.');
   if(items.some(p=>p?.definitionId!==definitionId||p?._auction?.buyNowPrice>ceiling))throw Error('FC ne respecte pas les critères de recherche.');
-  const offers=items.filter(p=>p?.definitionId===definitionId&&p.id!==excludeId&&p._auction?._tradeState==='active'&&!p._auction.stale&&p._auction.expires>0&&p._auction.buyNowPrice>0);
+  const offers=items.filter(p=>{const a=p?._auction;const remaining=Number(a?.expires)-(Number.isFinite(a?.timestamp)?Math.max(0,Date.now()-a.timestamp)/1000:0);return p?.definitionId===definitionId&&(excludeId===null||String(p.id)!==String(excludeId))&&a?._tradeState==='active'&&!a.stale&&remaining>0&&Number.isSafeInteger(a.buyNowPrice)&&a.buyNowPrice>Number(a.currentBid||0);});
   if(!offers.length){
    // A page containing only our own or expired listings does not prove the market is empty.
-   if(items.length){page++;continue;}
+   if(items.length){const signature=JSON.stringify(items.map(p=>[p._auction?.tradeId??p.id,p._auction?.buyNowPrice]));if(seenPages.has(signature))throw Error('FC répète la même page : comparaison incomplète.');seenPages.add(signature);page++;continue;}
    return {price:best?.price??null,item:best?.item??null,verified:true,searches};
   }
   const cheapest=offers.reduce((a,b)=>b._auction.buyNowPrice<a._auction.buyNowPrice?b:a);
   best={price:cheapest._auction.buyNowPrice,item:cheapest};
   if(best.price<=minimum)return {...best,verified:true,searches};
   ceiling=undercut(best.price,minimum,maximum);
-  page=1;
+  page=1;seenPages.clear();
  }
  return {...best,verified:false,searches};
 }
