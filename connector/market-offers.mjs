@@ -12,36 +12,74 @@ export function cheapestOffers(rows, now=Date.now()) {
  return [...groups.values()];
 }
 
-export function installMarketHints(choose,market,undercut){
+export function createObservedPrices(choose,clock=Date.now){
+ const cards=new Map();
+ function prune(){const now=clock();for(const [id,entries] of cards){for(const [key,entry] of entries){if(now-entry.seen>900000||!choose([entry.row],now).length)entries.delete(key);}if(!entries.size)cards.delete(id);}}
+ return {
+  observe(rows){prune();const now=clock();for(const row of rows){const item=row.data,id=String(item?.definitionId??''),key=item?._auction?.tradeId??item?.id;if(key===undefined)continue;
+   if(!choose([row],now).length){cards.get(id)?.delete(String(key));continue;}
+   if(!cards.has(id))cards.set(id,new Map());
+   const auction={...item._auction,timestamp:Number.isFinite(item._auction.timestamp)?item._auction.timestamp:now};
+   cards.get(id).set(String(key),{seen:now,row:{data:{...item,_auction:auction}}});
+  }},
+  get(id,excludeId=null){prune();const rows=[...(cards.get(String(id))?.values()||[])].map(e=>e.row).filter(r=>excludeId===null||String(r.data.id)!==String(excludeId));return choose(rows,clock())[0]?.price??null;},
+  clear(){cards.clear();}
+ };
+}
+
+export async function scanObservedPages({root,readRows,history,isActive,isCancelled,onProgress,wait,random=Math.random}){
+ const signature=()=>readRows().map(r=>r.data?._auction?.tradeId??r.data?.id).join(',');
+ const visited=new Set();let pages=0;
+ const active=()=>isActive()&&!isCancelled();
+ while(active()){
+  const before=signature();if(visited.has(before))throw Error('Page déjà consultée : parcours arrêté.');visited.add(before);
+  history.observe(readRows());onProgress(++pages);
+  const next=root.querySelector('.pagingContainer .next, .ut-paging-control .next');
+  if(!next)throw Error('Bouton page suivante introuvable. Prix limités aux pages consultées.');
+  if(next.disabled||next.getAttribute('aria-disabled')==='true'||next.classList.contains('disabled'))return pages;
+  await wait(3000+Math.floor(random()*3001));
+  if(!active())return pages;
+  if(signature()!==before)throw Error('Les résultats ont changé. Relance le parcours.');
+  if(!next.isConnected)throw Error('La navigation a changé. Parcours arrêté.');
+  next.click();
+  let changed=false;
+  for(let i=0;i<60&&active();i++){await wait(250);if(signature()!==before&&readRows().length){changed=true;break;}}
+  if(!active())return pages;
+  if(!changed)throw Error('La page suivante ne répond pas. Parcours arrêté.');
+ }
+ return pages;
+}
+
+export function installMarketHints(choose,history,scan){
  window.__satoMarketCleanup?.();
  const style=document.createElement('style');
  style.textContent='.listFUTItem.satodce-best-offer{box-shadow:inset 0 0 0 2px #b9f46c!important}.satodce-price-hint{display:inline!important;color:#b9f46c;font:bold 11px/1.3 system-ui;white-space:nowrap;pointer-events:none}.satodce-best-offer .auction>.auctionValue:nth-child(3) .value{color:#b9f46c!important;font-weight:bold}';
  document.head.append(style);
- let previous='',activeRoot=null,busy=false;
- // The results controller (or its list child) that owns the search shown on screen.
- function searchOwner(node){for(const c of [node,node?._listController,node?.currentController,...(node?.childViewControllers||[])])if(c?.searchCriteria&&typeof c._requestItems==='function')return c;return null;}
- function addSearchButton(node,root,rows){
-  if(root.querySelector('.satodce-market-cheapest'))return;
-  const button=document.createElement('button');button.type='button';button.className='satodce-market-cheapest';button.textContent='🔎 Moins cher sur tout le marché';button.style.cssText='display:block;box-sizing:border-box;width:calc(100% - 16px);margin:8px;padding:10px;border:1px solid #b9f46c;border-radius:12px;background:#1c3a12;color:#e8ffd0;font:bold 14px system-ui;white-space:normal;touch-action:manipulation;';
-  root.insertBefore(button,root.firstChild);
-  market.onTap(button,async()=>{if(busy)return;busy=true;button.disabled=true;button.textContent='Recherche sur tout le marché (quelques secondes)…';try{
-   const owner=searchOwner(node),criteria=owner?.searchCriteria;
-   const ids=new Set((criteria?.defId?.length?criteria.defId:rows().map(r=>r.data?.definitionId)).filter(Number.isSafeInteger));
-   if(ids.size!==1)throw Error('Cherche un seul joueur précis pour comparer tout le marché.');
-   const definitionId=[...ids][0],limits=rows().map(r=>r.data?._itemPriceLimits).find(Boolean)||{minimum:150,maximum:15000000};
-   const wait=ms=>new Promise(r=>setTimeout(r,ms));
-   const found=await market.find({definitionId,minimum:limits.minimum,maximum:limits.maximum},{search:market.search,wait,undercut});
-   if(found.price===null){button.textContent='Aucune offre en achat immédiat sur le marché.';return;}
-   const text='Moins cher du marché : '+found.price.toLocaleString('fr-FR')+' cr.'+(found.verified?'':' (vérification partielle)');
-   if(!owner||!button.isConnected){button.textContent=text+' Mets ce prix max d’achat immédiat et relance.';return;}
-   // Show that listing in FC's own results: same search capped at the cheapest price, then it gets selected.
-   await wait(3000);criteria.maxBuy=found.price;window.services.Item.marketRepository.reset();previous='';owner._requestItems(1);
-   button.textContent=text;
-  }catch(e){button.textContent=e.message+' Réessaie dans quelques secondes.';}finally{busy=false;button.disabled=false;}});
+ let previous='',activeRoot=null,scanning=false,cancelled=false,disposed=false;
+ function showSummary(root,rows){
+  let summary=root.querySelector('.satodce-observed-prices');
+  if(!summary){summary=document.createElement('div');summary.className='satodce-observed-prices';summary.style.cssText='margin:8px;padding:10px;color:#e8ffd0;background:#1c3a12;border-radius:12px;font:14px system-ui';root.insertBefore(summary,root.firstChild);}
+  const ids=[...new Set(rows.map(r=>r.data?.definitionId).filter(Number.isSafeInteger))];
+  const price=ids.length===1?history.get(ids[0]):null;
+  const text=price===null?'Ouvre les pages manuellement pour comparer les prix.': 'Moins cher observé : '+price.toLocaleString('fr-FR')+' cr. — pages consultées uniquement (15 min maximum).';
+  if(summary.textContent!==text)summary.textContent=text;
+  if(!root.querySelector('.satodce-clear-prices')){const reset=document.createElement('button');reset.type='button';reset.className='satodce-clear-prices';reset.textContent='Effacer les prix observés';reset.addEventListener('click',()=>{history.clear();previous='';});root.insertBefore(reset,summary);}
+ }
+ function addScan(root,owner){
+  if(root.querySelector('.satodce-scan-pages'))return;
+  const button=document.createElement('button');button.type='button';button.className='satodce-scan-pages';button.textContent='Comparer les pages suivantes';
+  button.addEventListener('click',async()=>{
+   if(!scanning&&window.__satoPriceScanBusy){window.__satoCancelPriceScan?.();button.textContent='Arrêt de la comparaison…';return;}
+   if(scanning){cancelled=true;button.textContent='Arrêt du parcours…';return;}
+   scanning=true;cancelled=false;window.__satoPriceScanBusy=true;window.__satoCancelPriceScan=()=>{cancelled=true;};
+   try{const pages=await scan({root,readRows:()=>owner.getView?.()?._list?.getRows?.()||[],history,isActive:()=>!disposed&&!document.hidden&&root.isConnected&&activeRoot===root,isCancelled:()=>cancelled,wait:ms=>new Promise(r=>setTimeout(r,ms)),onProgress:n=>{button.textContent='Arrêter — '+n+' page(s) consultée(s)';}});
+    button.textContent=(cancelled?'Parcours arrêté': 'Parcours terminé')+' — '+pages+' page(s) consultée(s)';
+   }catch(e){button.textContent=e.message;}finally{scanning=false;window.__satoPriceScanBusy=false;window.__satoCancelPriceScan=null;}
+  });root.insertBefore(button,root.firstChild);
+  if(window.__satoPriceScanBusy)button.textContent='Arrêter la comparaison en cours';
  }
  function restore(element){for(const label of element.querySelectorAll('[data-satodce-original-label]')){label.textContent=label.dataset.satodceOriginalLabel;delete label.dataset.satodceOriginalLabel;}}
  function clear(){restore(document);for(const e of document.querySelectorAll('.satodce-best-offer'))e.classList.remove('satodce-best-offer');}
- const viewRows=node=>node?.getView?.()?._list?.getRows?.()||[];
  function tick(){try{
   if(document.hidden)return;
   const queue=[window._appMain?._rootViewController],seen=new Set();let rows=null,root=null,owner=null;
@@ -51,7 +89,7 @@ export function installMarketHints(choose,market,undercut){
    for(const key of ['currentController','leftController','rightController','childViewControllers']){const value=node[key];if(Array.isArray(value))queue.push(...value);else if(value)queue.push(value);}
   }
   if(!rows){if(activeRoot)clear();activeRoot=null;previous='';return;}
-  addSearchButton(owner,root,()=>viewRows(owner));
+  history.observe(rows);showSummary(root,rows);addScan(root,owner);
   const best=choose(rows),winners=new Map(best.map(b=>[b.row,b]));
   const signature=rows.map(r=>r.data?._auction?.tradeId||r.data?.id).join(',')+'|'+best.map(b=>b.row.data?._auction?.tradeId+':'+b.price).join(',');
   if(root===activeRoot&&signature===previous&&rows.every(row=>{const e=row.getRootElement?.();return !e||e.classList.contains('satodce-best-offer')===winners.has(row)&&(!winners.has(row)||!!e.querySelector('.satodce-price-hint'));}))return;
@@ -60,13 +98,12 @@ export function installMarketHints(choose,market,undercut){
    if(!offer){restore(element);continue;}
    const label=element.querySelector('.auction>.auctionValue:nth-child(3) .label');if(!label)continue;
    const badge=old||document.createElement('span');badge.className='satodce-price-hint';
-   const text='Moins cher affiché';
+   const text='Moins cher de cette page';
    if(badge.textContent!==text)badge.textContent=text;
    if(!old){if(!label.dataset.satodceOriginalLabel)label.dataset.satodceOriginalLabel=label.textContent;label.replaceChildren(badge);}
   }
-  if((root!==activeRoot||signature!==previous)&&best.length===1){const row=best[0].row;row.tapCallback?.(row.data);row.getRootElement?.()?.scrollIntoView({block:'nearest'});}
   activeRoot=root;previous=signature;
  }catch{clear();}}
  const timer=setInterval(tick,1000);tick();
- window.__satoMarketCleanup=()=>{clearInterval(timer);clear();style.remove();document.querySelectorAll('.satodce-market-cheapest').forEach(e=>e.remove());};
+ window.__satoMarketCleanup=()=>{disposed=true;cancelled=true;clearInterval(timer);clear();style.remove();document.querySelectorAll('.satodce-observed-prices,.satodce-clear-prices,.satodce-market-cheapest,.satodce-scan-pages').forEach(e=>e.remove());};
 }

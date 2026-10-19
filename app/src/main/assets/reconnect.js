@@ -187,7 +187,7 @@
   const visual=(method,id)=>{if(id===undefined||id===null||id==='')return '';try{const value=window.AssetLocationUtils?.[method]?.(id);if(!value)return '';const u=new URL(value,location.href);return u.protocol==='https:'?u.href:'';}catch{return '';}};return lastCatalog={syncedAt:new Date().toISOString(),sets:Array.from(sets).map(set=>({id:String(set.id),name:(rewardCache.get('icon:'+visual('getSquadBuildingSetImageUri',set.assetId))||rewardCache.get(rewardKey(set.name)))?.title||String(set.name||'DCE FC'),description:(rewardCache.get('icon:'+visual('getSquadBuildingSetImageUri',set.assetId))||rewardCache.get(rewardKey(set.name)))?.description||String(set.description||''),iconUrl:visual('getSquadBuildingSetImageUri',set.assetId),rewardImageUrl:(rewardCache.get('icon:'+visual('getSquadBuildingSetImageUri',set.assetId))||rewardCache.get(rewardKey(set.name)))?.imageUrl||visual('getSquadBuildingRewardImageUri',set.getPreviewImageId?.()),rewardName:(rewardCache.get('icon:'+visual('getSquadBuildingSetImageUri',set.assetId))||rewardCache.get(rewardKey(set.name)))?.name||String(set.awards?.[0]?.name||set.awards?.[0]?.description||''),completed:state(set,'isComplete'),expired:state(set,'hasExpired'),repeatable:!!set.isRepeatable,timesCompleted:Number.isFinite(set.timesCompleted)?set.timesCompleted:null,endTime:!set.notExpirable&&Number.isFinite(set.endTime)?set.endTime:null,completedCount:Number.isFinite(set.challengesCompletedCount)?set.challengesCompletedCount:null,challengeCount:Number.isFinite(set.challengesCount)?set.challengesCount:null,challenges:Array.from(set.getChallenges?.()??[]).map(ch=>({id:String(ch.id),name:String(ch.name||'Défi FC'),completed:state(ch,'isCompleted'),expired:state(ch,'hasExpired'),timesCompleted:Number.isFinite(ch.timesCompleted)?ch.timesCompleted:null}))}))};
  }
  let collectionCancelled=false;
- // Album purchase: FC's own market results for one exact card, then the whole-market cheapest search.
+ // Open FC results on explicit user request; browsing pages remains manual.
  async function openMarket(definitionId){
   if(!Number.isSafeInteger(definitionId)||definitionId<=0)throw Error('Joueur invalide.');
   const nav=window.getAppMain?.()?.getRootViewController?.()?.getPresentedViewController?.()?.getCurrentViewController?.();
@@ -196,7 +196,6 @@
   window.services.Item.marketRepository?.reset?.();
   const Results=window.isPhone?.()?window.UTMarketSearchResultsViewController:window.UTMarketSearchResultsSplitViewController;
   const results=new Results();results.initWithSearchCriteria(criteria);nav.pushViewController(results);
-  for(let i=0;i<40;i++){await new Promise(r=>setTimeout(r,250));const button=document.querySelector('.satodce-market-cheapest');if(button&&!button.disabled){button.click();return {message:'Marché FC ouvert : recherche du moins cher sur tout le marché…'};}}
   return {message:'Marché FC ouvert sur ce joueur.'};
  }
  const handler=async e=>{

@@ -22,10 +22,15 @@ avant ton clic. Le bouton maison revient à l’accueil de l’écran utilisé ;
 revient aux écrans précédents sans fermer l’application. Un appui long sur l’onglet
 SatoDCE ouvre les options et la recherche de mises à jour.
 
-Sur le marché des transferts, **Moins cher sur tout le marché** cherche l’offre la moins
-chère de la carte sur toutes les pages (quelques recherches espacées) puis la sélectionne.
-Dans la mise en vente, **Un palier sous le moins cher du marché** remplit le prix d’achat
-immédiat juste sous l’offre la moins chère. Rien n’est acheté ni mis en vente sans ton appui.
+Sur le marché et dans **Comparer les prix**, **Comparer les pages suivantes** parcourt
+les pages à partir de la page ouverte, avec des pauses variables et un bouton d’arrêt.
+Le prix le plus bas observé est mémorisé par version de carte, sans sélection automatique.
+À l’ouverture du panneau de vente, l’appli ouvre les résultats FC de cette version,
+parcourt les pages depuis la première, puis préremplit les prix un palier sous le minimum.
+Le bouton d’arrêt est disponible pendant le parcours. En cas d’arrêt ou d’erreur,
+les prix restent inchangés. La mise en vente reste manuelle. Les prix ne concernent que les pages
+consultées et les offres non expirées observées depuis moins de 15 minutes.
+Les pauses variables ne garantissent pas que cette automatisation soit acceptée par EA.
 
 La connexion à ton compte SatoDCE (Google) se fait dans le navigateur du téléphone, puis l’appli reprend la main automatiquement.
 
@@ -54,9 +59,9 @@ sites concernent uniquement le profil ouvert.
 
 Dans les résultats du marché, l’offre au prix Achat immédiat le plus bas parmi
 les résultats affichés est mise en évidence pour chaque version exacte. Si une
-seule version est affichée, elle est sélectionnée automatiquement, sans achat.
-Sur l’écran de vente, **Un palier sous le moins cher** compare la même version et
-remplit les prix en respectant les limites FC. La mise en vente reste manuelle.
+seule version est affichée, elle reste simplement surlignée, sans sélection.
+Sur l’écran de vente, les prix préremplis respectent les limites FC et la version exacte.
+La mise en vente reste manuelle.
 
 À chaque lancement, l’appli vérifie les nouvelles versions et propose automatiquement de les installer avec les boutons **Mettre à jour** et **Plus tard**. La recherche manuelle reste disponible par un appui long sur l’onglet SatoDCE, puis **Rechercher une mise à jour de l’appli**. Le connecteur FC est téléchargé depuis satodce.fr à chaque utilisation : il est toujours à jour sans réinstaller l’appli.
 
