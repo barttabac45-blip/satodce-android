@@ -124,7 +124,7 @@ public class MainActivity extends Activity {
     ValueCallback<Uri[]> fileCallback;
     Updater updater;
     boolean foreground;
-    boolean reconnectStarted, connectorRunning, backgroundSync;
+    boolean reconnectStarted, connectorRunning, backgroundSync, albumMarketRunning;
     volatile boolean accountConnected;
     boolean accountPanelRequested;
     int readyChecks, disconnectedChecks;
@@ -531,12 +531,47 @@ public class MainActivity extends Activity {
     /** Functions the SatoDCE site may call when it runs inside the app. */
     class FcBridge {
         @JavascriptInterface
+        public void marketProgress(String message) {
+            if (message == null || message.length() > 1000) return;
+            main.post(() -> sato.evaluateJavascript("window.dispatchEvent(new CustomEvent('satodce-market',{detail:{message:" + org.json.JSONObject.quote(message) + "}}))", null));
+        }
+
+        @JavascriptInterface
+        public void marketResult(boolean success, String message) {
+            main.post(() -> {
+                albumMarketRunning = false;
+                if (message == null || message.length() > 1000) return;
+                sato.evaluateJavascript("window.dispatchEvent(new CustomEvent('satodce-market',{detail:{success:" + success + ",message:" + org.json.JSONObject.quote(message) + "}}))", null);
+                if (!success) toast(message);
+            });
+        }
+
+        @JavascriptInterface
         public void showFc() { main.post(() -> show(fc)); }
         @JavascriptInterface
         public void showSato() { main.post(() -> show(sato)); }
     }
 
     class SatoBridge {
+        /** Album purchases do not depend on a popup, a token, or the collection connector. */
+        @JavascriptInterface
+        public void openAlbumMarket(String definitionId) {
+            if (definitionId == null || !definitionId.matches("[1-9][0-9]{0,9}")) return;
+            main.post(() -> {
+                if (albumMarketRunning) { show(fc); return; }
+                show(fc);
+                if (fc.getUrl() == null || !fc.getUrl().startsWith(FC_URL)) { toast("Connecte-toi à FC puis réessaie depuis l’album."); return; }
+                try (InputStream in = getAssets().open("album-market.js")) {
+                    ByteArrayOutputStream out = new ByteArrayOutputStream();
+                    byte[] buffer = new byte[8192];
+                    for (int n; (n = in.read(buffer)) > 0;) out.write(buffer, 0, n);
+                    albumMarketRunning = true;
+                    String code = out.toString("UTF-8") + "\nPromise.resolve().then(()=>window.__satoOpenAlbumMarket(" + definitionId + ")).then(r=>SatoFcApp.marketResult(true,r.message)).catch(e=>SatoFcApp.marketResult(false,e.message||'Marché FC indisponible.'));";
+                    fc.evaluateJavascript(code, null);
+                } catch (Exception e) { albumMarketRunning = false; toast("Recherche du marché indisponible. Réessaie."); }
+            });
+        }
+
         @JavascriptInterface
         public void setAccountConnected(boolean connected) {
             main.post(() -> {

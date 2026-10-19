@@ -168,12 +168,13 @@
 },find:async function findCheapestOnMarket({definitionId,excludeId=null,minimum,maximum},{search,wait,undercut,maxSearches=Infinity,spacing=3000}){
  if(!Number.isSafeInteger(definitionId)||!Number.isSafeInteger(minimum)||!Number.isSafeInteger(maximum)||minimum<=0||maximum<minimum)throw Error('Carte ou limites FC indisponibles.');
  let ceiling=maximum,best=null,searches=0,page=1;const seenPages=new Set();
+ const delay=()=>typeof spacing==='function'?spacing():spacing;
  while(searches<maxSearches){
-  if(searches)await wait(spacing);
+  if(searches)await wait(delay());
   let items;
   try{items=await search({definitionId,maxBuy:ceiling,page});}
   // One refusal can be FC's rate limit: wait longer and retry once, then stop.
-  catch(error){searches++;if(searches>=maxSearches)throw error;await wait(spacing*2);items=await search({definitionId,maxBuy:ceiling,page});}
+  catch(error){searches++;if(searches>=maxSearches)throw error;await wait(delay()*2);items=await search({definitionId,maxBuy:ceiling,page});}
   searches++;
   if(!Array.isArray(items))throw Error('Résultats FC indisponibles.');
   if(items.some(p=>p?.definitionId!==definitionId||p?._auction?.buyNowPrice>ceiling))throw Error('FC ne respecte pas les critères de recherche.');
