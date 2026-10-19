@@ -11,6 +11,15 @@ Appli Android officielle de [SatoDCE](https://satodce.fr) : la Web App FC et Sat
 
 ## Utiliser
 
+Les automatismes d’achat et de vente sont désactivés par défaut à l’installation.
+Un appui long sur l’onglet SatoDCE, puis **Options du marché (achat et vente)**,
+permet de les activer séparément ; les choix sont conservés.
+Sans automatisme d’achat, **Acheter dans FC** ouvre toutes les offres de la version
+exacte du joueur, avec le moins cher de la page affichée en vert.
+Sans automatisme de vente, aucune recherche ni modification des prix n’est lancée.
+Les recherches et préremplissages automatiques décrits ci-dessous nécessitent
+l’activation de l’option correspondante.
+
 1. L’application s’ouvre toujours sur **FC Web App** pour te connecter à EA. L’onglet **Site SatoDCE** permet de te connecter à ton compte SatoDCE et de retrouver tes calculs.
 2. En haut, **Équipe** permet de lancer l’import du club, de l’équipe et des DCE ; **Album** met à jour la collection depuis FC ou SatoDCE.
 3. SatoDCE s’ouvre, calcule la solution ; *Placer dans le DCE FC* remplit le DCE et te ramène automatiquement dans l’onglet FC après confirmation du placement. Tu peux ensuite valider le DCE dans FC.

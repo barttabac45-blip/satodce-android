@@ -3,10 +3,10 @@ export function undercutPrice(price,minimum,maximum){
  const step=price<=1000?50:price<=10000?100:price<=50000?250:price<=100000?500:1000;
  return Math.max(minimum,Math.min(maximum,price-step));
 }
-export function installSalePrice(undercut,compare){
+export function installSalePrice(undercut,compare,enabled=()=>true){
  window.__satoSaleCleanup?.();let disposed=false,busy=false,cancelled=false;
- const selectedItems=new WeakMap();
- function tick(){try{if(document.hidden)return;const q=[window._appMain?._rootViewController],seen=new Set();while(q.length&&seen.size<150){const n=q.shift();if(!n||seen.has(n))continue;seen.add(n);
+ let selectedItems=new WeakMap();
+ function tick(){try{if(!enabled()){cancelled=true;selectedItems=new WeakMap();document.querySelectorAll('.satodce-sale-price').forEach(e=>e.remove());return;}if(document.hidden)return;const q=[window._appMain?._rootViewController],seen=new Set();while(q.length&&seen.size<150){const n=q.shift();if(!n||seen.has(n))continue;seen.add(n);
   const quick=n.panel?.quickListView,root=quick?.getRootElement?.();
   const open=root?.isConnected&&root.getClientRects().length&&quick._btnToggle?.getRootElement?.().classList.contains('open');
   if(root&&!open&&!busy)selectedItems.delete(root);
@@ -20,7 +20,7 @@ export function installSalePrice(undercut,compare){
      if(window.__satoPriceScanBusy){button.textContent='Une comparaison est déjà en cours.';return;}
      busy=true;cancelled=false;window.__satoPriceScanBusy=true;window.__satoCancelPriceScan=()=>{cancelled=true;};
      const item=n.viewmodel?._collection?.[n.viewmodel._index];
-     const unchanged=()=>!disposed&&!cancelled&&!document.hidden&&root.isConnected&&root.getClientRects().length>0&&n.viewmodel?._collection?.[n.viewmodel._index]===item&&quick._btnToggle?.getRootElement?.().classList.contains('open');
+     const unchanged=()=>enabled()&&!disposed&&!cancelled&&!document.hidden&&root.isConnected&&root.getClientRects().length>0&&n.viewmodel?._collection?.[n.viewmodel._index]===item&&quick._btnToggle?.getRootElement?.().classList.contains('open');
      try{
       if(item?.type!=='player'||!Number.isSafeInteger(item.definitionId))throw Error('Carte joueur indisponible.');
       const limits=item._itemPriceLimits;if(!limits)throw Error('Limites FC indisponibles.');

@@ -357,7 +357,8 @@ public class MainActivity extends Activity {
             "Synchroniser ma collection (album)",
             "Ouvrir la Web App FC",
             "Rechercher une mise à jour de l’appli",
-            "Ajouter un autre compte EA"
+            "Ajouter un autre compte EA",
+            "Options du marché (achat et vente)"
         };
         new AlertDialog.Builder(this)
             .setTitle("SatoDCE")
@@ -365,9 +366,22 @@ public class MainActivity extends Activity {
                 if (which == 0) runConnector("/collection-connector.txt");
                 else if (which == 1) { show(fc); fc.loadUrl(FC_URL); }
                 else if (which == 2) updater.check(true);
-                else addAccount();
+                else if (which == 3) addAccount();
+                else marketOptions();
             })
             .show();
+    }
+
+    void marketOptions() {
+        String[] labels = {"Achat : rechercher automatiquement le moins cher", "Vente : rechercher et préremplir au moins cher"};
+        boolean[] checked = {
+            getPreferences(MODE_PRIVATE).getBoolean("auto-album-cheapest", false),
+            getPreferences(MODE_PRIVATE).getBoolean("auto-sale-cheapest", false)
+        };
+        new AlertDialog.Builder(this).setTitle("Automatismes du marché")
+            .setMultiChoiceItems(labels, checked, (dialog, which, enabled) ->
+                getPreferences(MODE_PRIVATE).edit().putBoolean(which == 0 ? "auto-album-cheapest" : "auto-sale-cheapest", enabled).apply())
+            .setPositiveButton("Fermer", null).show();
     }
 
     void runConnector(String path) {
@@ -531,6 +545,11 @@ public class MainActivity extends Activity {
     /** Functions the SatoDCE site may call when it runs inside the app. */
     class FcBridge {
         @JavascriptInterface
+        public boolean autoSalePriceEnabled() {
+            return getPreferences(MODE_PRIVATE).getBoolean("auto-sale-cheapest", false);
+        }
+
+        @JavascriptInterface
         public void marketProgress(String message) {
             if (message == null || message.length() > 1000) return;
             main.post(() -> sato.evaluateJavascript("window.dispatchEvent(new CustomEvent('satodce-market',{detail:{message:" + org.json.JSONObject.quote(message) + "}}))", null));
@@ -566,7 +585,8 @@ public class MainActivity extends Activity {
                     byte[] buffer = new byte[8192];
                     for (int n; (n = in.read(buffer)) > 0;) out.write(buffer, 0, n);
                     albumMarketRunning = true;
-                    String code = out.toString("UTF-8") + "\nPromise.resolve().then(()=>window.__satoOpenAlbumMarket(" + definitionId + ")).then(r=>SatoFcApp.marketResult(true,r.message)).catch(e=>SatoFcApp.marketResult(false,e.message||'Marché FC indisponible.'));";
+                    boolean autoCheapest = getPreferences(MODE_PRIVATE).getBoolean("auto-album-cheapest", false);
+                    String code = out.toString("UTF-8") + "\nPromise.resolve().then(()=>window.__satoOpenAlbumMarket(" + definitionId + "," + autoCheapest + ")).then(r=>SatoFcApp.marketResult(true,r.message)).catch(e=>SatoFcApp.marketResult(false,e.message||'Marché FC indisponible.'));";
                     fc.evaluateJavascript(code, null);
                 } catch (Exception e) { albumMarketRunning = false; toast("Recherche du marché indisponible. Réessaie."); }
             });

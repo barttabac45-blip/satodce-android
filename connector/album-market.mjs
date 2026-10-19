@@ -1,5 +1,5 @@
 // Explicit album action: find and select an offer, never buy or bid.
-export async function openAlbumMarket(definitionId,{search,find,choose,undercut,wait,random=Math.random,onStatus=()=>{}}){
+export async function openAlbumMarket(definitionId,{search,find,choose,undercut,wait,autoCheapest=false,random=Math.random,onStatus=()=>{}}){
  if(!Number.isSafeInteger(definitionId)||definitionId<=0)throw Error('Joueur invalide.');
  if(window.__satoPriceScanBusy)throw Error('Une recherche de prix est déjà en cours.');
  const delay=()=>3000+Math.floor(random()*3001);
@@ -26,9 +26,31 @@ export async function openAlbumMarket(definitionId,{search,find,choose,undercut,
    nav=null;await pause(250);
   }
   if(!nav)throw Error('Connecte-toi à FC, puis réessaie « Acheter dans FC ».');
-  initial=current();await pause(delay());
+  initial=current();
+  if(!autoCheapest){
+   const Results=window.isPhone?.()?window.UTMarketSearchResultsViewController:window.UTMarketSearchResultsSplitViewController;
+   if(typeof Results!=='function')throw Error('Affichage du marché FC indisponible.');
+   const criteria=new window.UTSearchCriteriaDTO();Object.assign(criteria,{type:'player',defId:[definitionId],isExactSearch:true});
+   window.services.Item.marketRepository?.reset?.();
+   const results=new Results();results.initWithSearchCriteria(criteria);destination=results;nav.pushViewController(results);
+   const message='Marché du joueur ouvert. Le prix le plus bas de la liste affichée est en vert.';
+   onStatus(message);return {price:null,message};
+  }
+  await pause(delay());
   let requests=0;
-  const request=async criteria=>{check();status('Recherche du moins cher sur tout le marché… '+(++requests)+' vérification(s)');const items=await search(criteria);check();return items;};
+  const request=async criteria=>{
+   for(let attempt=0;attempt<2;attempt++){
+    check();status('Recherche du moins cher sur tout le marché… '+(++requests)+' vérification(s)');
+    let items;
+    try{items=await search(criteria);}catch(error){check();if(attempt)throw error;await pause(delay()*2);continue;}
+    check();
+    if(!Array.isArray(items))throw Error('Résultats FC indisponibles.');
+    // A single empty response can be transient, including the very first search.
+    // Repeat the same criteria before declaring absence or proving a minimum.
+    if(items.length||attempt)return items;
+    await pause(delay());
+   }
+  };
   const first=await request({definitionId,maxBuy:15000000,page:1});
   if(!Array.isArray(first))throw Error('Résultats FC indisponibles.');
   if(first.some(p=>p?.definitionId!==definitionId))throw Error('La version du joueur ne correspond pas.');

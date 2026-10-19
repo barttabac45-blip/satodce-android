@@ -117,10 +117,10 @@
  }catch{clear();}}
  const timer=setInterval(tick,1000);tick();
  window.__satoMarketCleanup=()=>{disposed=true;cancelled=true;clearInterval(timer);clear();style.remove();document.querySelectorAll('.satodce-observed-prices,.satodce-clear-prices,.satodce-market-cheapest,.satodce-scan-pages').forEach(e=>e.remove());};
-})(choose,history,scan);(function installSalePrice(undercut,compare){
+})(choose,history,scan);(function installSalePrice(undercut,compare,enabled=()=>true){
  window.__satoSaleCleanup?.();let disposed=false,busy=false,cancelled=false;
- const selectedItems=new WeakMap();
- function tick(){try{if(document.hidden)return;const q=[window._appMain?._rootViewController],seen=new Set();while(q.length&&seen.size<150){const n=q.shift();if(!n||seen.has(n))continue;seen.add(n);
+ let selectedItems=new WeakMap();
+ function tick(){try{if(!enabled()){cancelled=true;selectedItems=new WeakMap();document.querySelectorAll('.satodce-sale-price').forEach(e=>e.remove());return;}if(document.hidden)return;const q=[window._appMain?._rootViewController],seen=new Set();while(q.length&&seen.size<150){const n=q.shift();if(!n||seen.has(n))continue;seen.add(n);
   const quick=n.panel?.quickListView,root=quick?.getRootElement?.();
   const open=root?.isConnected&&root.getClientRects().length&&quick._btnToggle?.getRootElement?.().classList.contains('open');
   if(root&&!open&&!busy)selectedItems.delete(root);
@@ -134,7 +134,7 @@
      if(window.__satoPriceScanBusy){button.textContent='Une comparaison est déjà en cours.';return;}
      busy=true;cancelled=false;window.__satoPriceScanBusy=true;window.__satoCancelPriceScan=()=>{cancelled=true;};
      const item=n.viewmodel?._collection?.[n.viewmodel._index];
-     const unchanged=()=>!disposed&&!cancelled&&!document.hidden&&root.isConnected&&root.getClientRects().length>0&&n.viewmodel?._collection?.[n.viewmodel._index]===item&&quick._btnToggle?.getRootElement?.().classList.contains('open');
+     const unchanged=()=>enabled()&&!disposed&&!cancelled&&!document.hidden&&root.isConnected&&root.getClientRects().length>0&&n.viewmodel?._collection?.[n.viewmodel._index]===item&&quick._btnToggle?.getRootElement?.().classList.contains('open');
      try{
       if(item?.type!=='player'||!Number.isSafeInteger(item.definitionId))throw Error('Carte joueur indisponible.');
       const limits=item._itemPriceLimits;if(!limits)throw Error('Limites FC indisponibles.');
@@ -191,4 +191,4 @@
   page=1;seenPages.clear();
  }
  return {...best,verified:false,searches};
-},undercut,wait:ms=>new Promise(r=>setTimeout(r,ms))}));})();
+},undercut,wait:ms=>new Promise(r=>setTimeout(r,ms))}),()=>window.SatoFcApp?.autoSalePriceEnabled?.()===true);})();
