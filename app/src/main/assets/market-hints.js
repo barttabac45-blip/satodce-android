@@ -97,7 +97,11 @@
   const queue=[window._appMain?._rootViewController],seen=new Set();let rows=null,root=null,owner=null;
   while(queue.length&&seen.size<150){const node=queue.shift();if(!node||typeof node!=='object'||seen.has(node))continue;seen.add(node);
    const view=node.getView?.(),element=view?.getRootElement?.();
-   if(/MarketSearchResults|PriceComparison|ComparePrice/.test(node.constructor?.name||'')&&element?.isConnected&&element.getClientRects().length&&typeof view?._list?.getRows==='function'){rows=view._list.getRows();root=element;owner=node;break;}
+   if(/MarketSearchResults|PriceComparison|ComparePrice/.test(node.constructor?.name||'')&&element?.isConnected&&element.getClientRects().length&&typeof view?._list?.getRows==='function'){
+    const desktop=window.SatoFcApp?.nativePlatform?.()==='windows';
+    if(!rows||element.closest?.('.ui-layout-right')){rows=view._list.getRows();root=element;owner=node;}
+    if(!desktop)break;
+   }
    for(const key of ['currentController','leftController','rightController','childViewControllers']){const value=node[key];if(Array.isArray(value))queue.push(...value);else if(value)queue.push(value);}
   }
   if(!rows){if(activeRoot)clear();for(const old of document.querySelectorAll('.satodce-market-wide')){old.classList.remove('satodce-market-wide');old.classList.remove('satodce-market-comparison');}activeRoot=null;previous='';return;}
@@ -109,8 +113,9 @@
   if(window.SatoFcApp?.autoMarketCheapestEnabled?.()===true&&!autoScanned.has(root)&&!window.__satoPriceScanBusy){const button=root.querySelector('.satodce-scan-pages');if(typeof button?.click==='function'){autoScanned.add(root);setTimeout(()=>{if(root.isConnected&&!disposed&&!window.__satoPriceScanBusy)button.click();},100);}}
   const mode=window.SatoFcApp?.marketView?.()||(window.SatoFcApp?.marketGridEnabled?.()===true?'grid':'normal');
   const grid=mode==='grid';
-  for(const old of document.querySelectorAll('.satodce-market-list'))if(mode!=='list'||!root.contains(old))old.classList.remove('satodce-market-list');
-  for(const old of document.querySelectorAll('.satodce-market-grid'))if(!grid||!root.contains(old))old.classList.remove('satodce-market-grid');
+  const desktop=window.SatoFcApp?.nativePlatform?.()==='windows';
+  for(const old of document.querySelectorAll('.satodce-market-list'))if(mode!=='list'||(!desktop&&!root.contains(old)))old.classList.remove('satodce-market-list');
+  for(const old of document.querySelectorAll('.satodce-market-grid'))if(!grid||(!desktop&&!root.contains(old)))old.classList.remove('satodce-market-grid');
   const list=rows[0]?.getRootElement?.()?.parentElement;if(list)list.classList.toggle('satodce-market-grid',grid);
   if(list)list.classList.toggle('satodce-market-list',mode==='list');
   const layout=list?.closest?.('.ut-content');layout?.classList.toggle('satodce-market-wide',mode!=='normal');
