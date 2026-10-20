@@ -357,23 +357,28 @@ public class MainActivity extends Activity {
 
     /** Replaces the bookmarks: runs the same connector code inside the FC screen. */
     void connectorMenu() {
-        String[] items = {
-            "Synchroniser ma collection (album)",
-            "Ouvrir la Web App FC",
-            "Rechercher une mise à jour de l’appli",
-            "Ajouter un autre compte EA",
-            "Options du marché (achat et vente)"
-        };
-        new AlertDialog.Builder(this)
-            .setTitle("SatoDCE")
-            .setItems(items, (d, which) -> {
-                if (which == 0) runConnector("/collection-connector.txt");
-                else if (which == 1) { show(fc); fc.loadUrl(FC_URL); }
-                else if (which == 2) updater.check(true);
-                else if (which == 3) addAccount();
-                else marketOptions();
-            })
-            .show();
+        show(fc);
+        try (InputStream in = getAssets().open("fc-settings-panel.js")) {
+            ByteArrayOutputStream out = new ByteArrayOutputStream();
+            byte[] buffer = new byte[8192];
+            for (int n; (n = in.read(buffer)) > 0;) out.write(buffer, 0, n);
+            fc.evaluateJavascript(out.toString("UTF-8") + "\nwindow.__satoSettingsPanel.open();", null);
+        } catch (Exception e) { toast("Réglages indisponibles. Réessaie."); }
+    }
+
+    void loadNativeSettings(int remaining) {
+        sato.evaluateJavascript("JSON.stringify(window.__satoSettingsSnapshot?.()||null)", raw -> {
+            try {
+                Object decoded = new org.json.JSONTokener(raw).nextValue();
+                if (!(decoded instanceof String) || "null".equals(decoded)) {
+                    if (remaining > 0) main.postDelayed(() -> loadNativeSettings(remaining - 1), 250);
+                    else fc.evaluateJavascript("window.__satoSettingsPanel?.status('Ouvre le site SatoDCE et connecte ton compte pour charger les réglages.')", null);
+                    return;
+                }
+                org.json.JSONObject data = new org.json.JSONObject((String) decoded);
+                fc.evaluateJavascript("window.__satoSettingsPanel?.render(" + data.toString() + ")", null);
+            } catch (Exception e) { toast("Chargement des réglages impossible."); }
+        });
     }
 
     void marketOptions() {
@@ -455,6 +460,14 @@ public class MainActivity extends Activity {
                         view.evaluateJavascript(out.toString("UTF-8"), null);
                     } catch (Exception ignored) { }
                     try (InputStream in = getAssets().open("fc-login-layout.js")) {
+                        ByteArrayOutputStream out = new ByteArrayOutputStream();
+                        byte[] buffer = new byte[4096];
+                        for (int n; (n = in.read(buffer)) > 0;) out.write(buffer, 0, n);
+                        view.evaluateJavascript(out.toString("UTF-8"), null);
+                    } catch (Exception ignored) { }
+                }
+                if (!satoSide && url != null && url.startsWith(FC_URL)) {
+                    try (InputStream in = getAssets().open("fc-settings.js")) {
                         ByteArrayOutputStream out = new ByteArrayOutputStream();
                         byte[] buffer = new byte[4096];
                         for (int n; (n = in.read(buffer)) > 0;) out.write(buffer, 0, n);
@@ -558,6 +571,28 @@ public class MainActivity extends Activity {
     /** Functions the SatoDCE site may call when it runs inside the app. */
     class FcBridge {
         @JavascriptInterface
+        public void openSettings() { main.post(() -> connectorMenu()); }
+        @JavascriptInterface
+        public void loadSettings() { main.post(() -> loadNativeSettings(80)); }
+
+        @JavascriptInterface
+        public void saveSettings(String changes) {
+            if (changes == null || changes.length() > 200000) return;
+            main.post(() -> {
+                try {
+                    org.json.JSONObject data = new org.json.JSONObject(changes);
+                    sato.evaluateJavascript("(()=>{try{window.__satoSettingsSave(" + data.toString() + ");return null;}catch(e){return e.message;}})()", error -> {
+                        if (error != null && !"null".equals(error)) fc.evaluateJavascript("window.__satoSettingsPanel?.status(" + error + ")", null);
+                    });
+                } catch (Exception e) { toast("Réglages invalides."); }
+            });
+        }
+
+        @JavascriptInterface
+        public void checkUpdate() { main.post(() -> updater.check(true)); }
+
+
+        @JavascriptInterface
         public boolean autoSalePriceEnabled() {
             return getPreferences(MODE_PRIVATE).getBoolean("auto-sale-cheapest", false);
         }
@@ -585,6 +620,27 @@ public class MainActivity extends Activity {
     }
 
     class SatoBridge {
+        @JavascriptInterface
+        public void copyText(String text) {
+            if (text == null || text.length() > 5000) return;
+            main.post(() -> {
+                android.content.ClipboardManager clipboard = (android.content.ClipboardManager) getSystemService(CLIPBOARD_SERVICE);
+                clipboard.setPrimaryClip(android.content.ClipData.newPlainText("SatoDCE", text));
+                toast("Nom copié");
+            });
+        }
+
+        @JavascriptInterface
+        public void setMarketSettings(boolean album, boolean sale) {
+            getPreferences(MODE_PRIVATE).edit().putBoolean("auto-album-cheapest", album).putBoolean("auto-sale-cheapest", sale).apply();
+        }
+
+        @JavascriptInterface
+        public void settingsStatus(String message) {
+            if (message == null || message.length() > 1000) return;
+            main.post(() -> fc.evaluateJavascript("window.__satoSettingsPanel?.status(" + org.json.JSONObject.quote(message) + ")", null));
+        }
+
         /** Album purchases do not depend on a popup, a token, or the collection connector. */
         @JavascriptInterface
         public void openAlbumMarket(String definitionId) {
