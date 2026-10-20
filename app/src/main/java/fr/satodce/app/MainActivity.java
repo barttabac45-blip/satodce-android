@@ -335,8 +335,10 @@ public class MainActivity extends Activity {
     }
 
     void show(WebView view) {
+        boolean switching = view.getVisibility() != View.VISIBLE;
         fc.setVisibility(view == fc ? View.VISIBLE : View.GONE);
         sato.setVisibility(view == sato ? View.VISIBLE : View.GONE);
+        if (switching) view.requestFocus();
         tabFc.setTextColor(getColor(view == fc ? R.color.text : R.color.muted));
         tabSato.setTextColor(getColor(view == sato ? R.color.text : R.color.muted));
         tabFc.setBackground(pill(view == fc ? 0xFF2563EB : 0xFF202938, view == fc ? 0xFF7AAEFF : 0xFF42506A));
@@ -411,6 +413,15 @@ public class MainActivity extends Activity {
     @SuppressLint("SetJavaScriptEnabled")
     WebView newWebView(boolean satoSide) {
         WebView w = new WebView(this);
+        w.setFocusable(true);
+        w.setFocusableInTouchMode(true);
+        // Native tabs and popup WebViews can retain focus after a screen switch.
+        // Restore it before WebView handles the tap and creates its input connection.
+        w.setOnTouchListener((view, event) -> {
+            if (event.getActionMasked() == android.view.MotionEvent.ACTION_DOWN && !view.hasFocus())
+                view.requestFocus();
+            return false;
+        });
         w.setBackgroundColor(getColor(R.color.background));
         WebSettings s = w.getSettings();
         s.setJavaScriptEnabled(true);
