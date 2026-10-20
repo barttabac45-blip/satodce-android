@@ -89,7 +89,11 @@ export function installMarketHints(choose,history,scan){
    if(/MarketSearchResults|PriceComparison|ComparePrice/.test(node.constructor?.name||'')&&element?.isConnected&&element.getClientRects().length&&typeof view?._list?.getRows==='function'){rows=view._list.getRows();root=element;owner=node;break;}
    for(const key of ['currentController','leftController','rightController','childViewControllers']){const value=node[key];if(Array.isArray(value))queue.push(...value);else if(value)queue.push(value);}
   }
-  if(!rows){if(activeRoot)clear();for(const old of document.querySelectorAll('.satodce-market-wide'))old.classList.remove('satodce-market-wide');activeRoot=null;previous='';return;}
+  if(!rows){if(activeRoot)clear();for(const old of document.querySelectorAll('.satodce-market-wide')){old.classList.remove('satodce-market-wide');old.classList.remove('satodce-market-comparison');}activeRoot=null;previous='';return;}
+  if(window.SatoFcApp?.nativePlatform?.()==='android'&&/PriceComparison|ComparePrice/.test(owner.constructor?.name||'')){
+   clear();for(const old of document.querySelectorAll('.satodce-market-grid,.satodce-market-list,.satodce-market-wide,.satodce-market-comparison'))for(const cls of ['satodce-market-grid','satodce-market-list','satodce-market-wide','satodce-market-comparison'])old.classList.remove(cls);
+   root.querySelectorAll('.satodce-observed-prices,.satodce-clear-prices,.satodce-scan-pages').forEach(e=>e.remove());activeRoot=null;previous='';return;
+  }
   history.observe(rows);showSummary(root,rows);addScan(root,owner);
   if(window.SatoFcApp?.autoMarketCheapestEnabled?.()===true&&!autoScanned.has(root)&&!window.__satoPriceScanBusy){const button=root.querySelector('.satodce-scan-pages');if(typeof button?.click==='function'){autoScanned.add(root);setTimeout(()=>{if(root.isConnected&&!disposed&&!window.__satoPriceScanBusy)button.click();},100);}}
   const mode=window.SatoFcApp?.marketView?.()||(window.SatoFcApp?.marketGridEnabled?.()===true?'grid':'normal');
@@ -99,9 +103,12 @@ export function installMarketHints(choose,history,scan){
   const list=rows[0]?.getRootElement?.()?.parentElement;if(list)list.classList.toggle('satodce-market-grid',grid);
   if(list)list.classList.toggle('satodce-market-list',mode==='list');
   const layout=list?.closest?.('.ut-content');layout?.classList.toggle('satodce-market-wide',mode!=='normal');
+  layout?.classList.toggle('satodce-market-comparison',mode!=='normal'&&!!list?.closest?.('.ui-layout-right'));
   if(document.getElementById&&!document.getElementById('satodce-market-grid-style')){const css=document.createElement('style');css.id='satodce-market-grid-style';css.textContent=`
    .satodce-market-wide>.ui-layout-left{width:calc(100% - 240px)!important;max-width:none!important;flex:1 1 auto!important}
    .satodce-market-wide>.ui-layout-right{width:240px!important;min-width:240px!important;flex:0 0 240px!important}
+   .satodce-market-wide.satodce-market-comparison>.ui-layout-left{width:240px!important;min-width:240px!important;flex:0 0 240px!important}
+   .satodce-market-wide.satodce-market-comparison>.ui-layout-right{width:calc(100% - 240px)!important;min-width:0!important;max-width:none!important;flex:1 1 auto!important}
    .satodce-market-grid{display:grid!important;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:2px;padding:2px!important;box-sizing:border-box;align-content:start}
    .satodce-market-grid>.listFUTItem{height:auto!important;min-width:0!important;width:auto!important;margin:0!important;position:relative!important;display:block!important;border-radius:12px}
    .satodce-market-grid .rowContent{display:block!important;position:relative!important;height:136px!important;min-height:136px!important;width:100%!important;box-sizing:border-box;padding:4px!important;border-radius:2px!important}

@@ -573,6 +573,8 @@ public class MainActivity extends Activity {
         @JavascriptInterface
         public boolean marketGridEnabled() { return getPreferences(MODE_PRIVATE).getBoolean("market-grid", false); }
         @JavascriptInterface
+        public String nativePlatform() { return "android"; }
+        @JavascriptInterface
         public boolean autoMarketCheapestEnabled() { return getPreferences(MODE_PRIVATE).getBoolean("auto-album-cheapest", false); }
         @JavascriptInterface
         public String marketView() { return getPreferences(MODE_PRIVATE).getString("market-view", marketGridEnabled() ? "grid" : "normal"); }
