@@ -453,6 +453,7 @@ public class MainActivity extends Activity {
             public void onPageFinished(WebView view, String url) {
                 if (url != null && url.contains("ea.com")) view.evaluateJavascript(ALLOW_PORTRAIT, null);
                 if (!satoSide && url != null && url.startsWith(FC_URL)) {
+                    try (InputStream in = getAssets().open("fc-scroll.js")) { view.evaluateJavascript(new String(in.readAllBytes(), StandardCharsets.UTF_8), null); } catch (Exception ignored) { }
                     try (InputStream in = getAssets().open("market-hints.js")) {
                         ByteArrayOutputStream out = new ByteArrayOutputStream();
                         byte[] buffer = new byte[8192];
