@@ -110,8 +110,10 @@ public class MainActivity extends Activity {
         Class<?>[] activities = {MainActivity.class, ProfileOneActivity.class, ProfileTwoActivity.class, ProfileThreeActivity.class};
         profiles().edit().putInt("active", slot).commit();
         Intent next = new Intent(this, activities[slot]);next.putExtra("profile-selected", true);
-        next.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TOP);
-        startActivity(next);finish();
+        // Each profile has its own task and WebView process. Keep its live FC
+        // page: cookies alone do not preserve EA's in-memory session.
+        next.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_REORDER_TO_FRONT);
+        startActivity(next);
     }
     final Runnable updateActions = new Runnable() {
         @Override public void run() {
@@ -676,6 +678,8 @@ public class MainActivity extends Activity {
     @Override
     protected void onResume() {
         super.onResume();
+        // Android Recents can return directly to an existing profile task too.
+        if (!isFinishing()) profiles().edit().putInt("active", profileSlot()).commit();
         foreground = true;
         main.removeCallbacks(reconnect);
         main.removeCallbacks(updateActions);
@@ -688,6 +692,7 @@ public class MainActivity extends Activity {
     @Override
     protected void onPause() {
         foreground = false;
+        CookieManager.getInstance().flush();
         main.removeCallbacks(reconnect);
         main.removeCallbacks(updateActions);
         main.removeCallbacks(checkUpdates);

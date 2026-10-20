@@ -16,6 +16,7 @@
 
         <activity
             android:name=".MainActivity"
+            android:taskAffinity="fr.satodce.app.profile0"
             android:exported="true"
             android:launchMode="singleTask"
             android:configChanges="orientation|screenSize|screenLayout|keyboardHidden|smallestScreenSize|uiMode"
@@ -32,8 +33,8 @@
                 <data android:scheme="satodce" android:host="login" />
             </intent-filter>
         </activity>
-        <activity android:name=".ProfileOneActivity" android:process=":profile1" android:exported="false" android:launchMode="singleTask" android:configChanges="orientation|screenSize|screenLayout|keyboardHidden|smallestScreenSize|uiMode" android:windowSoftInputMode="adjustResize" />
-        <activity android:name=".ProfileTwoActivity" android:process=":profile2" android:exported="false" android:launchMode="singleTask" android:configChanges="orientation|screenSize|screenLayout|keyboardHidden|smallestScreenSize|uiMode" android:windowSoftInputMode="adjustResize" />
-        <activity android:name=".ProfileThreeActivity" android:process=":profile3" android:exported="false" android:launchMode="singleTask" android:configChanges="orientation|screenSize|screenLayout|keyboardHidden|smallestScreenSize|uiMode" android:windowSoftInputMode="adjustResize" />
+        <activity android:name=".ProfileOneActivity" android:taskAffinity="fr.satodce.app.profile1" android:process=":profile1" android:exported="false" android:launchMode="singleTask" android:configChanges="orientation|screenSize|screenLayout|keyboardHidden|smallestScreenSize|uiMode" android:windowSoftInputMode="adjustResize" />
+        <activity android:name=".ProfileTwoActivity" android:taskAffinity="fr.satodce.app.profile2" android:process=":profile2" android:exported="false" android:launchMode="singleTask" android:configChanges="orientation|screenSize|screenLayout|keyboardHidden|smallestScreenSize|uiMode" android:windowSoftInputMode="adjustResize" />
+        <activity android:name=".ProfileThreeActivity" android:taskAffinity="fr.satodce.app.profile3" android:process=":profile3" android:exported="false" android:launchMode="singleTask" android:configChanges="orientation|screenSize|screenLayout|keyboardHidden|smallestScreenSize|uiMode" android:windowSoftInputMode="adjustResize" />
     </application>
 </manifest>

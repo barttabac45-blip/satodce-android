@@ -109,14 +109,14 @@ export function connectSatoDCE(origin,intent='catalogue',freshWindow=false){
    if(missing.some(p=>!/^\d{1,12}$/.test(String(p.definitionId))))throw Error('Identifiant de carte marché invalide.');
    const criteria=new window.UTSearchCriteriaDTO();criteria.type=window.SearchType.PLAYER;criteria.defId=missing.map(p=>Number(p.definitionId));criteria.isExactSearch=true;
    const response=await observe(window.services.Item.searchConceptItems(criteria));concepts=response?.items||[];
-   for(const p of missing){if(concepts.some(c=>String(c.databaseId??c.definitionId)===String(p.definitionId)&&c.concept===true))continue;criteria.defId=[Number(p.definitionId)];const exact=await observe(window.services.Item.searchConceptItems(criteria));concepts.push(...(exact?.items||[]));}
+   for(const p of missing){if(concepts.some(c=>String(c.definitionId??c.databaseId)===String(p.definitionId)&&c.concept===true))continue;criteria.defId=[Number(p.definitionId)];const exact=await observe(window.services.Item.searchConceptItems(criteria));concepts.push(...(exact?.items||[]));}
   }
-  const chosen=requests.map(p=>p.owned?cards.get(String(p.id)):concepts.find(c=>String(c.databaseId??c.definitionId)===String(p.definitionId)&&c.concept===true));
+  const chosen=requests.map(p=>p.owned?cards.get(String(p.id)):concepts.find(c=>String(c.definitionId??c.databaseId)===String(p.definitionId)&&c.concept===true));
   if(chosen.some(p=>!p||p.type!=='player'))throw Error('Une carte du club ou sa version concept exacte est indisponible. Réimporte puis relance la solution.');
   if(typeof ch.squad.setPlayers!=='function'||typeof ch.meetsRequirements!=='function'||typeof window.services?.SBC?.saveChallenge!=='function')throw Error('Interface FC modifiée : envoi désactivé.');
   const original=slots.map(s=>s.getItem());const planned=[...original];starters.forEach((index,i)=>planned[index]=chosen[i]);
   let saveStarted=false;
-  try{ch.squad.setPlayers(planned,true);if(!missing.length&&!ch.meetsRequirements())throw Error('FC refuse cette combinaison : les exigences ne sont pas satisfaites.');saveStarted=true;await observe(window.services.SBC.saveChallenge(ch));const after=ch.squad.getPlayers();if(starters.some((index,i)=>{const item=after[index].getItem();return chosen[i].concept?String(item?.databaseId)!==String(chosen[i].databaseId):String(item?.id)!==String(chosen[i].id);}))throw Error('Le placement ne correspond pas à la solution envoyée.');ch.onDataChange?.notify?.({squad:ch.squad});return {message:(missing.length?`Équipe placée avec ${missing.length} cartes concept à acheter. Recherche-les sur le marché depuis FC, puis remplace les concepts par les cartes achetées. DCE non soumis.`:'Équipe placée et sauvegardée dans le DCE. Vérifie-la puis valide dans FC.')};}
+  try{ch.squad.setPlayers(planned,true);if(!missing.length&&!ch.meetsRequirements())throw Error('FC refuse cette combinaison : les exigences ne sont pas satisfaites.');saveStarted=true;await observe(window.services.SBC.saveChallenge(ch));const after=ch.squad.getPlayers();if(starters.some((index,i)=>{const item=after[index].getItem();return chosen[i].concept?String(item?.definitionId??item?.databaseId)!==String(chosen[i].definitionId??chosen[i].databaseId):String(item?.id)!==String(chosen[i].id);}))throw Error('Le placement ne correspond pas à la solution envoyée.');ch.onDataChange?.notify?.({squad:ch.squad});return {message:(missing.length?`Équipe placée avec ${missing.length} cartes concept à acheter. Recherche-les sur le marché depuis FC, puis remplace les concepts par les cartes achetées. DCE non soumis.`:'Équipe placée et sauvegardée dans le DCE. Vérifie-la puis valide dans FC.')};}
   catch(error){ch.squad.setPlayers(original,true);ch.onDataChange?.notify?.({squad:ch.squad});if(saveStarted)throw Error(`${error.message} Le terrain local a été restauré ; recharge le DCE pour vérifier l’état serveur.`);throw error;}
  }
  async function catalog(){
@@ -152,7 +152,7 @@ export function connectSatoDCE(origin,intent='catalogue',freshWindow=false){
   else if(command==='collection'){if(typeof window.__satoDCEReadCollection!=='function')throw Error('Mets le connecteur SatoDCE à jour.');const start=Number(e.data.start)||0;if(!Number.isSafeInteger(start)||start<0||start>100000)throw Error('Position de reprise invalide.');collectionCancelled=false;await window.__satoDCEReadCollection(start,page=>send({kind:'collection-page',...page}),()=>collectionCancelled||popup.closed);}
   else if(command==='catalog')send({kind:'catalog',...await catalog()});
   else if(command==='buy'){window.SatoFcApp?.showFc?.();send({kind:'market',...await openMarket(Number(e.data.definitionId))});}
-  else if(command==='fill'){window.SatoFcApp?.showFc?.();send({kind:'filled',...await fill(e.data)});}
+  else if(command==='fill'){const result=await fill(e.data);window.SatoFcApp?.showFc?.();send({kind:'filled',...result});}
   else throw Error('Commande inconnue.');}
   catch(error){send({kind:command==='collection'?'collection-error':'error',message:error.message});}
   finally{if(command!=='import')busy=false;}
