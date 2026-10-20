@@ -572,6 +572,8 @@ public class MainActivity extends Activity {
     class FcBridge {
         @JavascriptInterface
         public boolean marketGridEnabled() { return getPreferences(MODE_PRIVATE).getBoolean("market-grid", false); }
+        @JavascriptInterface
+        public String marketView() { return getPreferences(MODE_PRIVATE).getString("market-view", marketGridEnabled() ? "grid" : "normal"); }
 
         @JavascriptInterface
         public void openSettings() { main.post(() -> connectorMenu()); }
@@ -636,6 +638,10 @@ public class MainActivity extends Activity {
         @JavascriptInterface
         public void setMarketSettings(boolean album, boolean sale, boolean grid) {
             getPreferences(MODE_PRIVATE).edit().putBoolean("auto-album-cheapest", album).putBoolean("auto-sale-cheapest", sale).putBoolean("market-grid", grid).apply();
+        }
+        @JavascriptInterface
+        public void setMarketView(String mode) {
+            if ("normal".equals(mode) || "list".equals(mode) || "grid".equals(mode)) getPreferences(MODE_PRIVATE).edit().putString("market-view", mode).apply();
         }
 
         @JavascriptInterface
