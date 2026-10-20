@@ -64,7 +64,7 @@
 };const history=window.__satoObservedPrices||createHistory(choose);window.__satoObservedPrices=history;(function installMarketHints(choose,history,scan){
  window.__satoMarketCleanup?.();
  const style=document.createElement('style');
- style.textContent='.listFUTItem.satodce-best-offer{box-shadow:inset 0 0 0 2px #b9f46c!important}.satodce-price-hint{display:inline!important;color:#b9f46c;font:bold 11px/1.3 system-ui;white-space:nowrap;pointer-events:none}.satodce-best-offer .auction>.auctionValue:nth-child(3) .value{color:#b9f46c!important;font-weight:bold}';
+ style.textContent='.satodce-scan-pages,.satodce-clear-prices{background:#26364b;color:#fff;border:1px solid #6c829d;border-radius:8px;padding:8px;margin:4px;font:13px system-ui}.listFUTItem.satodce-best-offer{box-shadow:inset 0 0 0 2px #b9f46c!important}.satodce-price-hint{display:inline!important;color:#b9f46c;font:bold 11px/1.3 system-ui;white-space:nowrap;pointer-events:none}.satodce-best-offer .auction>.auctionValue:nth-child(3) .value{color:#b9f46c!important;font-weight:bold}';
  document.head.append(style);
  let previous='',activeRoot=null,scanning=false,cancelled=false,disposed=false;
  function showSummary(root,rows){
@@ -104,7 +104,21 @@
   const grid=window.SatoFcApp?.marketGridEnabled?.()===true;
   for(const old of document.querySelectorAll('.satodce-market-grid'))if(!grid||!root.contains(old))old.classList.remove('satodce-market-grid');
   const list=rows[0]?.getRootElement?.()?.parentElement;if(list)list.classList.toggle('satodce-market-grid',grid);
-  if(document.getElementById&&!document.getElementById('satodce-market-grid-style')){const css=document.createElement('style');css.id='satodce-market-grid-style';css.textContent='.satodce-market-grid{display:grid!important;grid-template-columns:repeat(auto-fill,minmax(170px,1fr));gap:8px;padding:8px!important}.satodce-market-grid>.listFUTItem{height:auto!important;min-height:280px;position:relative!important;display:flex!important;flex-direction:column;align-items:center;width:auto!important}.satodce-market-grid .auction{position:static!important;display:flex!important;flex-wrap:wrap;justify-content:center;width:100%!important}.satodce-market-grid .auctionValue{display:block!important;min-width:70px}.satodce-market-grid .entityContainer{position:relative!important;width:100%!important;min-height:180px}.satodce-market-grid .name{white-space:normal!important}';document.head.append(css);}
+  if(document.getElementById&&!document.getElementById('satodce-market-grid-style')){const css=document.createElement('style');css.id='satodce-market-grid-style';css.textContent=`
+   .satodce-market-grid{display:grid!important;grid-template-columns:repeat(auto-fill,minmax(145px,1fr));gap:8px;padding:8px!important;box-sizing:border-box;align-content:start}
+   .satodce-market-grid>.listFUTItem{height:auto!important;min-width:0!important;width:auto!important;margin:0!important;position:relative!important;display:block!important;border-radius:12px}
+   .satodce-market-grid .rowContent{display:flex!important;flex-direction:column!important;height:100%!important;min-height:0!important;width:100%!important;box-sizing:border-box;padding:8px!important}
+   .satodce-market-grid .rowContent::before{display:none!important}
+   .satodce-market-grid .entityContainer{position:relative!important;float:none!important;display:flex!important;flex-direction:column!important;align-items:center!important;width:100%!important;min-height:0!important;padding:0!important;margin:0!important}
+   .satodce-market-grid .entityContainer .item{float:none!important;margin:0!important;flex-shrink:0;zoom:1.45}
+   .satodce-market-grid .entityContainer>.name{display:block!important;max-width:100%!important;width:100%!important;text-align:center;padding:5px 0!important;margin:0!important;font-size:14px!important;white-space:nowrap!important;box-sizing:border-box}
+   .satodce-market-grid .entityContainer>.player-stats-data-component,.satodce-market-grid .entityContainer>.dataString{display:none!important}
+   .satodce-market-grid .auction{position:static!important;display:grid!important;grid-template-columns:1fr 1fr;gap:5px;width:100%!important;max-width:none!important;height:auto!important;padding:4px 0!important;margin:auto 0 0!important;box-sizing:border-box}
+   .satodce-market-grid .auction>*{min-width:0!important;width:auto!important;flex:none!important;text-align:center!important}
+   .satodce-market-grid .auction .label{font-size:10px!important;line-height:1.2!important;white-space:normal!important;text-align:center!important}
+   .satodce-market-grid .auction .value,.satodce-market-grid .auction .time{font-size:14px!important;text-align:center!important}
+   .satodce-market-grid .satodce-price-hint{font-size:10px!important;white-space:normal!important}
+  `;document.head.append(css);}
   const best=choose(rows),winners=new Map(best.map(b=>[b.row,b]));
   const signature=rows.map(r=>r.data?._auction?.tradeId||r.data?.id).join(',')+'|'+best.map(b=>b.row.data?._auction?.tradeId+':'+b.price).join(',');
   if(root===activeRoot&&signature===previous&&rows.every(row=>{const e=row.getRootElement?.();return !e||e.classList.contains('satodce-best-offer')===winners.has(row)&&(!winners.has(row)||!!e.querySelector('.satodce-price-hint'));}))return;
