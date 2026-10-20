@@ -1,6 +1,10 @@
 (()=>{
  if(window.__satoSettingsInstalled)return;
  window.__satoSettingsInstalled=true;
+ let lastOpen=0;
+ const activate=event=>{const button=event.target.closest?.('#satodce-fc-settings');if(!button)return;event.preventDefault();event.stopImmediatePropagation();if(Date.now()-lastOpen<600)return;lastOpen=Date.now();window.SatoFcApp?.openSettings?.();};
+ document.addEventListener('touchend',activate,{capture:true,passive:false});
+ document.addEventListener('click',activate,true);
  const install=()=>{
   if(document.getElementById('satodce-fc-settings'))return;
   const club=[...document.querySelectorAll('button')].find(b=>/\bClub\s*$/.test(b.textContent.trim())&&!b.closest('[role="dialog"]'));

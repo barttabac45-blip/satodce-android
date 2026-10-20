@@ -571,6 +571,9 @@ public class MainActivity extends Activity {
     /** Functions the SatoDCE site may call when it runs inside the app. */
     class FcBridge {
         @JavascriptInterface
+        public boolean marketGridEnabled() { return getPreferences(MODE_PRIVATE).getBoolean("market-grid", false); }
+
+        @JavascriptInterface
         public void openSettings() { main.post(() -> connectorMenu()); }
         @JavascriptInterface
         public void loadSettings() { main.post(() -> loadNativeSettings(80)); }
@@ -631,8 +634,8 @@ public class MainActivity extends Activity {
         }
 
         @JavascriptInterface
-        public void setMarketSettings(boolean album, boolean sale) {
-            getPreferences(MODE_PRIVATE).edit().putBoolean("auto-album-cheapest", album).putBoolean("auto-sale-cheapest", sale).apply();
+        public void setMarketSettings(boolean album, boolean sale, boolean grid) {
+            getPreferences(MODE_PRIVATE).edit().putBoolean("auto-album-cheapest", album).putBoolean("auto-sale-cheapest", sale).putBoolean("market-grid", grid).apply();
         }
 
         @JavascriptInterface

@@ -101,6 +101,10 @@
   }
   if(!rows){if(activeRoot)clear();activeRoot=null;previous='';return;}
   history.observe(rows);showSummary(root,rows);addScan(root,owner);
+  const grid=window.SatoFcApp?.marketGridEnabled?.()===true;
+  for(const old of document.querySelectorAll('.satodce-market-grid'))if(!grid||!root.contains(old))old.classList.remove('satodce-market-grid');
+  const list=rows[0]?.getRootElement?.()?.parentElement;if(list)list.classList.toggle('satodce-market-grid',grid);
+  if(document.getElementById&&!document.getElementById('satodce-market-grid-style')){const css=document.createElement('style');css.id='satodce-market-grid-style';css.textContent='.satodce-market-grid{display:grid!important;grid-template-columns:repeat(auto-fill,minmax(170px,1fr));gap:8px;padding:8px!important}.satodce-market-grid>.listFUTItem{height:auto!important;min-height:280px;position:relative!important;display:flex!important;flex-direction:column;align-items:center;width:auto!important}.satodce-market-grid .auction{position:static!important;display:flex!important;flex-wrap:wrap;justify-content:center;width:100%!important}.satodce-market-grid .auctionValue{display:block!important;min-width:70px}.satodce-market-grid .entityContainer{position:relative!important;width:100%!important;min-height:180px}.satodce-market-grid .name{white-space:normal!important}';document.head.append(css);}
   const best=choose(rows),winners=new Map(best.map(b=>[b.row,b]));
   const signature=rows.map(r=>r.data?._auction?.tradeId||r.data?.id).join(',')+'|'+best.map(b=>b.row.data?._auction?.tradeId+':'+b.price).join(',');
   if(root===activeRoot&&signature===previous&&rows.every(row=>{const e=row.getRootElement?.();return !e||e.classList.contains('satodce-best-offer')===winners.has(row)&&(!winners.has(row)||!!e.querySelector('.satodce-price-hint'));}))return;
