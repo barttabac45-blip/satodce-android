@@ -88,24 +88,27 @@ export function installMarketHints(choose,history,scan){
    if(/MarketSearchResults|PriceComparison|ComparePrice/.test(node.constructor?.name||'')&&element?.isConnected&&element.getClientRects().length&&typeof view?._list?.getRows==='function'){rows=view._list.getRows();root=element;owner=node;break;}
    for(const key of ['currentController','leftController','rightController','childViewControllers']){const value=node[key];if(Array.isArray(value))queue.push(...value);else if(value)queue.push(value);}
   }
-  if(!rows){if(activeRoot)clear();activeRoot=null;previous='';return;}
+  if(!rows){if(activeRoot)clear();for(const old of document.querySelectorAll('.satodce-market-wide'))old.classList.remove('satodce-market-wide');activeRoot=null;previous='';return;}
   history.observe(rows);showSummary(root,rows);addScan(root,owner);
   const grid=window.SatoFcApp?.marketGridEnabled?.()===true;
   for(const old of document.querySelectorAll('.satodce-market-grid'))if(!grid||!root.contains(old))old.classList.remove('satodce-market-grid');
   const list=rows[0]?.getRootElement?.()?.parentElement;if(list)list.classList.toggle('satodce-market-grid',grid);
+  const layout=list?.closest?.('.ut-content');layout?.classList.toggle('satodce-market-wide',grid);
   if(document.getElementById&&!document.getElementById('satodce-market-grid-style')){const css=document.createElement('style');css.id='satodce-market-grid-style';css.textContent=`
-   .satodce-market-grid{display:grid!important;grid-template-columns:repeat(auto-fill,minmax(145px,1fr));gap:8px;padding:8px!important;box-sizing:border-box;align-content:start}
+   .satodce-market-wide>.ui-layout-left{width:calc(100% - 240px)!important;max-width:none!important;flex:1 1 auto!important}
+   .satodce-market-wide>.ui-layout-right{width:240px!important;min-width:240px!important;flex:0 0 240px!important}
+   .satodce-market-grid{display:grid!important;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:2px;padding:2px!important;box-sizing:border-box;align-content:start}
    .satodce-market-grid>.listFUTItem{height:auto!important;min-width:0!important;width:auto!important;margin:0!important;position:relative!important;display:block!important;border-radius:12px}
-   .satodce-market-grid .rowContent{display:flex!important;flex-direction:column!important;height:100%!important;min-height:0!important;width:100%!important;box-sizing:border-box;padding:8px!important}
+   .satodce-market-grid .rowContent{display:block!important;position:relative!important;height:136px!important;min-height:136px!important;width:100%!important;box-sizing:border-box;padding:4px!important;border-radius:2px!important}
    .satodce-market-grid .rowContent::before{display:none!important}
-   .satodce-market-grid .entityContainer{position:relative!important;float:none!important;display:flex!important;flex-direction:column!important;align-items:center!important;width:100%!important;min-height:0!important;padding:0!important;margin:0!important}
-   .satodce-market-grid .entityContainer .item{float:none!important;margin:0!important;flex-shrink:0;zoom:1.45}
-   .satodce-market-grid .entityContainer>.name{display:block!important;max-width:100%!important;width:100%!important;text-align:center;padding:5px 0!important;margin:0!important;font-size:14px!important;white-space:nowrap!important;box-sizing:border-box}
+   .satodce-market-grid .entityContainer{position:static!important;float:none!important;display:block!important;width:100%!important;min-height:0!important;padding:0!important;margin:0!important}
+   .satodce-market-grid .entityContainer .item{position:absolute!important;left:3px!important;top:3px!important;float:none!important;margin:0!important;zoom:1;transform:scale(.9)!important;transform-origin:top left!important}
+   .satodce-market-grid .entityContainer>.name{position:absolute!important;left:80px!important;right:3px!important;top:4px!important;display:block!important;max-width:none!important;width:auto!important;text-align:left!important;padding:0!important;margin:0!important;font-size:12px!important;line-height:16px!important;white-space:nowrap!important;box-sizing:border-box}
    .satodce-market-grid .entityContainer>.player-stats-data-component,.satodce-market-grid .entityContainer>.dataString{display:none!important}
-   .satodce-market-grid .auction{position:static!important;display:grid!important;grid-template-columns:1fr 1fr;gap:5px;width:100%!important;max-width:none!important;height:auto!important;padding:4px 0!important;margin:auto 0 0!important;box-sizing:border-box}
-   .satodce-market-grid .auction>*{min-width:0!important;width:auto!important;flex:none!important;text-align:center!important}
-   .satodce-market-grid .auction .label{font-size:10px!important;line-height:1.2!important;white-space:normal!important;text-align:center!important}
-   .satodce-market-grid .auction .value,.satodce-market-grid .auction .time{font-size:14px!important;text-align:center!important}
+   .satodce-market-grid .auction{position:absolute!important;left:80px!important;right:3px!important;top:23px!important;display:grid!important;grid-template-columns:1fr 1fr;gap:4px 2px;width:auto!important;max-width:none!important;height:auto!important;padding:0!important;margin:0!important;box-sizing:border-box}
+   .satodce-market-grid .auction>*{min-width:0!important;width:auto!important;flex:none!important;text-align:left!important}
+   .satodce-market-grid .auction .label{font-size:10px!important;line-height:1.2!important;white-space:normal!important;text-align:left!important}
+   .satodce-market-grid .auction .value,.satodce-market-grid .auction .time{font-size:12px!important;text-align:left!important}
    .satodce-market-grid .satodce-price-hint{font-size:10px!important;white-space:normal!important}
   `;document.head.append(css);}
   const best=choose(rows),winners=new Map(best.map(b=>[b.row,b]));
