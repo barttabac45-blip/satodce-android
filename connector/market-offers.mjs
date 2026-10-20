@@ -56,6 +56,7 @@ export function installMarketHints(choose,history,scan){
  style.textContent='.satodce-scan-pages,.satodce-clear-prices{background:#26364b;color:#fff;border:1px solid #6c829d;border-radius:8px;padding:8px;margin:4px;font:13px system-ui}.listFUTItem.satodce-best-offer{box-shadow:inset 0 0 0 2px #b9f46c!important}.satodce-price-hint{display:inline!important;color:#b9f46c;font:bold 11px/1.3 system-ui;white-space:nowrap;pointer-events:none}.satodce-best-offer .auction>.auctionValue:nth-child(3) .value{color:#b9f46c!important;font-weight:bold}';
  document.head.append(style);
  let previous='',activeRoot=null,scanning=false,cancelled=false,disposed=false;
+ const autoScanned=new WeakSet();
  function showSummary(root,rows){
   let summary=root.querySelector('.satodce-observed-prices');
   if(!summary){summary=document.createElement('div');summary.className='satodce-observed-prices';summary.style.cssText='margin:8px;padding:10px;color:#e8ffd0;background:#1c3a12;border-radius:12px;font:14px system-ui';root.insertBefore(summary,root.firstChild);}
@@ -90,6 +91,7 @@ export function installMarketHints(choose,history,scan){
   }
   if(!rows){if(activeRoot)clear();for(const old of document.querySelectorAll('.satodce-market-wide'))old.classList.remove('satodce-market-wide');activeRoot=null;previous='';return;}
   history.observe(rows);showSummary(root,rows);addScan(root,owner);
+  if(window.SatoFcApp?.autoMarketCheapestEnabled?.()===true&&!autoScanned.has(root)&&!window.__satoPriceScanBusy){const button=root.querySelector('.satodce-scan-pages');if(typeof button?.click==='function'){autoScanned.add(root);setTimeout(()=>{if(root.isConnected&&!disposed&&!window.__satoPriceScanBusy)button.click();},100);}}
   const mode=window.SatoFcApp?.marketView?.()||(window.SatoFcApp?.marketGridEnabled?.()===true?'grid':'normal');
   const grid=mode==='grid';
   for(const old of document.querySelectorAll('.satodce-market-list'))if(mode!=='list'||!root.contains(old))old.classList.remove('satodce-market-list');

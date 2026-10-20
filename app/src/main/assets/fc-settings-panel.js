@@ -2,7 +2,7 @@
  if(window.__satoSettingsPanel)return;
  let panel,state;
  const status=text=>{const node=panel?.querySelector('[data-status]');if(node)node.textContent=text;};
- const fields=[['untradeableOnly','Utiliser uniquement les non-échangeables du club'],['includeSquad','Autoriser les joueurs de mon équipe active'],['automaticValueProtection','Protéger automatiquement les cartes chères'],['prioritizeStorage','Prioriser le stockage DCE'],['prioritizeDuplicates','Prioriser les doublons'],['prioritizeTransfers','Prioriser la liste des transferts'],['includeSbc','Autoriser les joueurs obtenus par DCE'],['includeObjectives','Autoriser les joueurs obtenus par objectifs'],['autoAlbumCheapest','Achat Album : rechercher automatiquement le moins cher'],['autoSaleCheapest','Vente : rechercher et préremplir au moins cher']];
+ const fields=[['untradeableOnly','Utiliser uniquement les non-échangeables du club'],['includeSquad','Autoriser les joueurs de mon équipe active'],['automaticValueProtection','Protéger automatiquement les cartes chères'],['prioritizeStorage','Prioriser le stockage DCE'],['prioritizeDuplicates','Prioriser les doublons'],['prioritizeTransfers','Prioriser la liste des transferts'],['includeSbc','Autoriser les joueurs obtenus par DCE'],['includeObjectives','Autoriser les joueurs obtenus par objectifs'],['autoAlbumCheapest','Album, Transferts et Comparer prix : rechercher le moins cher'],['autoSaleCheapest','Vente : rechercher et préremplir au moins cher']];
  const save=change=>{status('Enregistrement du réglage…');const json=JSON.stringify(change);setTimeout(()=>window.SatoFcApp?.saveSettings?.(json),80);};
  const render=data=>{
   state=data;if(!panel)return;const host=panel.querySelector('[data-fields]');host.replaceChildren();
