@@ -35,6 +35,18 @@ export async function openAlbumMarket(definitionId,{search,find,choose,undercut,
    if(bounded)Object.assign(criteria,{minBuy:Math.max(150,Math.floor(announcedPrice)-300),maxBuy:Math.min(15000000,Math.max(150,Math.ceil(announcedPrice)+300))});
    window.services.Item.marketRepository?.reset?.();
    const results=new Results();results.initWithSearchCriteria(criteria);destination=results;nav.pushViewController(results);
+   if(bounded){
+    const displayedRows=()=>{const queue=[results],seen=new Set();while(queue.length&&seen.size<40){const node=queue.shift();if(!node||seen.has(node))continue;seen.add(node);const rows=node.getView?.()?._list?.getRows?.();if(rows?.length)return rows;for(const key of ['_listController','currentController','leftController','rightController','childViewControllers','_childViewControllers']){const child=node[key];if(Array.isArray(child))queue.push(...child);else if(child)queue.push(child);}}return [];};
+    for(let i=0;i<60;i++){
+     check();const cheapest=choose(displayedRows()).filter(o=>o.definitionId===String(definitionId)).sort((a,b)=>a.price-b.price)[0];
+     if(cheapest&&typeof cheapest.row.tapCallback==='function'){
+      cheapest.row.tapCallback(cheapest.row.data);cheapest.row.getRootElement?.()?.scrollIntoView?.({block:'nearest'});
+      const message='Offre la moins chère affichée sélectionnée : '+cheapest.price.toLocaleString('fr-FR')+' cr. Confirme l’achat dans FC.';onStatus(message);return {price:cheapest.price,message};
+     }
+     await pause(250);
+    }
+    const message='Aucune offre disponible dans la fourchette annoncée. Ajuste les prix dans FC.';onStatus(message);return {price:null,message};
+   }
    const message='Marché du joueur ouvert. Le prix le plus bas de la liste affichée est en vert.';
    onStatus(message);return {price:null,message};
   }
