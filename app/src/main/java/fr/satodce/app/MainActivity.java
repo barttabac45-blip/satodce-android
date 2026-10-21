@@ -451,6 +451,13 @@ public class MainActivity extends Activity {
             /** EA asks tablets in portrait to rotate; its Web App works fine in portrait, so the warning is hidden. */
             @Override
             public void onPageFinished(WebView view, String url) {
+                if (url != null && (url.startsWith(FC_URL) || url.startsWith(SITE))) {
+                    try (InputStream in = getAssets().open("price-controls.js")) {
+                        ByteArrayOutputStream out = new ByteArrayOutputStream(); byte[] buffer = new byte[8192];
+                        for (int n; (n = in.read(buffer)) > 0;) out.write(buffer, 0, n);
+                        view.evaluateJavascript(out.toString("UTF-8"), null);
+                    } catch (Exception ignored) { }
+                }
                 if (url != null && url.contains("ea.com")) view.evaluateJavascript(ALLOW_PORTRAIT, null);
                 if (!satoSide && url != null && url.startsWith(FC_URL)) {
                     try (InputStream in = getAssets().open("fc-scroll.js")) { view.evaluateJavascript(new String(in.readAllBytes(), StandardCharsets.UTF_8), null); } catch (Exception ignored) { }
@@ -606,6 +613,10 @@ public class MainActivity extends Activity {
         public boolean autoSalePriceEnabled() {
             return getPreferences(MODE_PRIVATE).getBoolean("auto-sale-cheapest", false);
         }
+        @JavascriptInterface
+        public boolean usePaidSalePriceEnabled() {
+            return !autoSalePriceEnabled() && getPreferences(MODE_PRIVATE).getBoolean("use-paid-sale-price", false);
+        }
 
         @JavascriptInterface
         public void marketProgress(String message) {
@@ -645,6 +656,10 @@ public class MainActivity extends Activity {
             getPreferences(MODE_PRIVATE).edit().putBoolean("auto-album-cheapest", album).putBoolean("auto-sale-cheapest", sale).putBoolean("market-grid", grid).apply();
         }
         @JavascriptInterface
+        public void setPriceSettings(boolean albumRange, boolean paidSale) {
+            getPreferences(MODE_PRIVATE).edit().putBoolean("album-price-range", albumRange && !getPreferences(MODE_PRIVATE).getBoolean("auto-album-cheapest", false)).putBoolean("use-paid-sale-price", paidSale && !getPreferences(MODE_PRIVATE).getBoolean("auto-sale-cheapest", false)).apply();
+        }
+        @JavascriptInterface
         public void setMarketView(String mode) {
             if ("normal".equals(mode) || "list".equals(mode) || "grid".equals(mode)) getPreferences(MODE_PRIVATE).edit().putString("market-view", mode).apply();
         }
@@ -658,6 +673,10 @@ public class MainActivity extends Activity {
         /** Album purchases do not depend on a popup, a token, or the collection connector. */
         @JavascriptInterface
         public void openAlbumMarket(String definitionId) {
+            openAlbumMarketAtPrice(definitionId, "");
+        }
+        @JavascriptInterface
+        public void openAlbumMarketAtPrice(String definitionId, String announcedPrice) {
             if (definitionId == null || !definitionId.matches("[1-9][0-9]{0,9}")) return;
             main.post(() -> {
                 if (albumMarketRunning) { show(fc); return; }
@@ -669,7 +688,12 @@ public class MainActivity extends Activity {
                     for (int n; (n = in.read(buffer)) > 0;) out.write(buffer, 0, n);
                     albumMarketRunning = true;
                     boolean autoCheapest = getPreferences(MODE_PRIVATE).getBoolean("auto-album-cheapest", false);
-                    String code = out.toString("UTF-8") + "\nPromise.resolve().then(()=>window.__satoOpenAlbumMarket(" + definitionId + "," + autoCheapest + ")).then(r=>SatoFcApp.marketResult(true,r.message)).catch(e=>SatoFcApp.marketResult(false,e.message||'Marché FC indisponible.'));";
+                    String price = "null";
+                    if (!autoCheapest && getPreferences(MODE_PRIVATE).getBoolean("album-price-range", false) && announcedPrice != null && announcedPrice.matches("[1-9][0-9]{0,7}")) {
+                        long parsed = Long.parseLong(announcedPrice);
+                        if (parsed <= 15000000) price = Long.toString(parsed);
+                    }
+                    String code = out.toString("UTF-8") + "\nPromise.resolve().then(()=>window.__satoOpenAlbumMarket(" + definitionId + "," + autoCheapest + "," + price + ")).then(r=>SatoFcApp.marketResult(true,r.message)).catch(e=>SatoFcApp.marketResult(false,e.message||'Marché FC indisponible.'));";
                     fc.evaluateJavascript(code, null);
                 } catch (Exception e) { albumMarketRunning = false; toast("Recherche du marché indisponible. Réessaie."); }
             });
