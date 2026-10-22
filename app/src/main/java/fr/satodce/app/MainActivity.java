@@ -265,7 +265,14 @@ public class MainActivity extends Activity {
         accounts.setBackground(pill(0xFF293241, 0xFF475569));
         LinearLayout.LayoutParams accountParams = new LinearLayout.LayoutParams(dp(60), ViewGroup.LayoutParams.MATCH_PARENT);
         accountParams.setMargins(dp(5), 0, 0, 0);bar.addView(accounts, accountParams);
-        syncTeam = tab("↻ Équipe", v -> runConnector("/import-test.txt"));
+        // Always-visible settings, like the Windows app (the FC menu entry can be hidden on small screens).
+        Button settings = tab("⚙", v -> connectorMenu());
+        settings.setTextSize(20);settings.setPadding(0,0,0,0);settings.setMinWidth(0);settings.setMinimumWidth(0);
+        settings.setContentDescription("Réglages SatoDCE");
+        settings.setBackground(pill(0xFF293241, 0xFF475569));
+        LinearLayout.LayoutParams settingsParams = new LinearLayout.LayoutParams(dp(46), ViewGroup.LayoutParams.MATCH_PARENT);
+        settingsParams.setMargins(dp(5), 0, 0, 0);bar.addView(settings, settingsParams);
+        syncTeam = tab("↻ Mon club", v -> runConnector("/import-test.txt"));
         syncTeam.setContentDescription("Synchroniser le club, l’équipe et les DCE");
         syncAlbum = tab("↻ Album", v -> runConnector("/collection-connector.txt"));
         syncAlbum.setContentDescription("Synchroniser l’album");
