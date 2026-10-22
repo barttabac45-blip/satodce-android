@@ -1,0 +1,1 @@
+Comptes : possibilite de supprimer un compte de l'appareil (Comptes > Supprimer un compte).
