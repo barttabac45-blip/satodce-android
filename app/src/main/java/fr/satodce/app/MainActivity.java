@@ -411,6 +411,16 @@ public class MainActivity extends Activity {
         }
         show(fc);
         connectorRunning = true;
+        // EA refuses the Web App while Ultimate Team is open on a console or PC:
+        // the connector would then open SatoDCE without anything to read.
+        fc.evaluateJavascript("(()=>{try{if(/Signed Into Another Device/i.test(document.body?.innerText||''))return 'elsewhere';return window.services?.User?.getUser?.()?.getSelectedPersona?.()?'ready':'login';}catch{return 'login';}})()", state -> {
+            if ("\"ready\"".equals(state)) { downloadConnector(path); return; }
+            connectorRunning = false;
+            toast("\"elsewhere\"".equals(state) ? "FC est ouvert sur une console ou un PC : quitte Ultimate Team dessus, touche Retry dans FC, puis relance." : "Connecte-toi à la Web App FC, puis relance.");
+        });
+    }
+
+    void downloadConnector(String path) {
         toast("Connexion de SatoDCE à FC…");
         io.execute(() -> {
             try {
