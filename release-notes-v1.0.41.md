@@ -1,0 +1,1 @@
+Correctif equipe active : cache FC, reponses imbriquees et postes. FIFA fait foi par defaut pour les albums.

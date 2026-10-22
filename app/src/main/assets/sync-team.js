@@ -1,8 +1,8 @@
 (()=>{// Original read-only adapter. EA internals are undocumented and may change.
 // Reference for field names: docs/webapp-internals.md in theblakelalonde/fc-sbc-solver.
 (() => {
- if(window.__satoDCEReaderVersion===3)return;
- window.__satoDCEReaderVersion=3;
+ if(window.__satoDCEReaderVersion===4)return;
+ window.__satoDCEReaderVersion=4;
  let busy=false;
  const send=(requestId,type,data)=>window.postMessage({requestId,type,...data},location.origin);
  const read=(obj,method)=>typeof obj?.[method]==='function'?obj[method]():undefined;
@@ -34,8 +34,10 @@
    }
    let squadVerified=false,squadIds=new Set(),squadSlots=new Map();
    const active=api.Squad?.activeSquad??read(api.Squad,'getActiveSquadId');
-   if(active!=null&&typeof api.Squad?.requestSquadById==='function'){
-    try{const result=await response(api.Squad.requestSquadById(active));const squad=result.squad??result;const slots=read(squad,'getPlayers');if(Array.isArray(slots)){for(const [squadIndex,slot] of slots.entries()){const card=read(slot,'getItem')??slot.item??slot._item;if(card?.id>0){squadIds.add(String(card.id));squadSlots.set(String(card.id),{squadIndex,squadPosition:positions[slot.position]||positions[slot._position]||''});items.set(String(card.id),card);}}squadVerified=squadIds.size>0;}}catch{}
+   const captureSquad=squad=>{const slots=read(squad,'getPlayers');if(!Array.isArray(slots))return;for(const [squadIndex,slot] of slots.entries()){const card=read(slot,'getItem')??slot.item??slot._item;if(card?.id>0){const position=slot.position??slot._position;squadIds.add(String(card.id));squadSlots.set(String(card.id),{squadIndex,squadPosition:positions[position?.typeId??position]||''});items.set(String(card.id),card);}}squadVerified=squadIds.size>0;};
+   try{const persona=read(api.User,'getUser')?.selectedPersona;captureSquad(repos.Squad?.squads?.get?.(persona)?.get?.(active));}catch{}
+   if(!squadVerified&&active!=null&&typeof api.Squad?.requestSquadById==='function'){
+    try{const result=await response(api.Squad.requestSquadById(active));captureSquad(result.response?.squad??result.data?.squad??result.squad??result.response??result);if(!squadVerified){const persona=read(api.User,'getUser')?.selectedPersona;captureSquad(repos.Squad?.squads?.get?.(persona)?.get?.(active));}}catch{}
    }
    // Canonical club links merge the men's and women's clubs when supplied by FC.
    const links=new Map();try{for(const [a,b] of repos.TeamConfig.teamLinks||[])links.set(String(a),String(b));}catch{}
