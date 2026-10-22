@@ -1,0 +1,1 @@
+Synchro : message clair quand FC est ouvert sur une console ou un PC, ou deconnecte, au lieu d'un echec silencieux.
