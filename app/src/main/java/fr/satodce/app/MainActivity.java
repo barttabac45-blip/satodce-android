@@ -344,6 +344,7 @@ public class MainActivity extends Activity {
     }
 
     void show(WebView view) {
+        if (view == fc) fc.evaluateJavascript("window.__satoSettingsPanel?.close?.();document.querySelector('#satodce-settings-panel')?.remove()", null);
         boolean switching = view.getVisibility() != View.VISIBLE;
         fc.setVisibility(view == fc ? View.VISIBLE : View.GONE);
         sato.setVisibility(view == sato ? View.VISIBLE : View.GONE);
