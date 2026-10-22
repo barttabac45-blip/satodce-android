@@ -1,0 +1,1 @@
+Réglages Album : marges de prix modifiables séparément sous et au-dessus du prix affiché sur la carte. Exemple recalculé et sauvegarde des valeurs dans le compte SatoDCE. Explication du lien avec « Acheter dans FC » depuis l’onglet Album.

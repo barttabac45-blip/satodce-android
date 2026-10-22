@@ -1,5 +1,5 @@
 // Explicit album action: find and select an offer, never buy or bid.
-export async function openAlbumMarket(definitionId,{search,find,choose,undercut,wait,autoCheapest=false,announcedPrice=null,random=Math.random,onStatus=()=>{}}){
+export async function openAlbumMarket(definitionId,{search,find,choose,undercut,wait,autoCheapest=false,announcedPrice=null,priceBelow=300,priceAbove=300,random=Math.random,onStatus=()=>{}}){
  if(!Number.isSafeInteger(definitionId)||definitionId<=0)throw Error('Joueur invalide.');
  if(window.__satoPriceScanBusy)throw Error('Une recherche de prix est déjà en cours.');
  const delay=()=>3000+Math.floor(random()*3001);
@@ -32,7 +32,7 @@ export async function openAlbumMarket(definitionId,{search,find,choose,undercut,
    const Results=window.isPhone?.()?window.UTMarketSearchResultsViewController:window.UTMarketSearchResultsSplitViewController;
    if(typeof Results!=='function')throw Error('Affichage du marché FC indisponible.');
    const criteria=new window.UTSearchCriteriaDTO();Object.assign(criteria,{type:'player',defId:[definitionId],isExactSearch:true});
-   if(bounded)Object.assign(criteria,{minBuy:Math.max(150,Math.floor(announcedPrice)-300),maxBuy:Math.min(15000000,Math.max(150,Math.ceil(announcedPrice)+300))});
+   if(bounded)Object.assign(criteria,{minBuy:Math.max(150,Math.floor(announcedPrice)-(Number.isInteger(priceBelow)&&priceBelow>=0&&priceBelow<=15000000?priceBelow:300)),maxBuy:Math.min(15000000,Math.max(150,Math.ceil(announcedPrice)+(Number.isInteger(priceAbove)&&priceAbove>=0&&priceAbove<=15000000?priceAbove:300)))});
    window.services.Item.marketRepository?.reset?.();
    const results=new Results();results.initWithSearchCriteria(criteria);destination=results;nav.pushViewController(results);
    if(bounded){

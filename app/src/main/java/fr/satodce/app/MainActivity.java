@@ -663,6 +663,11 @@ public class MainActivity extends Activity {
             getPreferences(MODE_PRIVATE).edit().putBoolean("auto-album-cheapest", album).putBoolean("auto-sale-cheapest", sale).putBoolean("market-grid", grid).apply();
         }
         @JavascriptInterface
+        public void setAlbumPriceMargins(int below, int above) {
+            if (below < 0 || above < 0 || below > 15000000 || above > 15000000) return;
+            getPreferences(MODE_PRIVATE).edit().putInt("album-price-below", below).putInt("album-price-above", above).apply();
+        }
+        @JavascriptInterface
         public void setPriceSettings(boolean albumRange, boolean paidSale) {
             getPreferences(MODE_PRIVATE).edit().putBoolean("album-price-range", albumRange && !getPreferences(MODE_PRIVATE).getBoolean("auto-album-cheapest", false)).putBoolean("use-paid-sale-price", paidSale && !getPreferences(MODE_PRIVATE).getBoolean("auto-sale-cheapest", false)).apply();
         }
@@ -700,7 +705,7 @@ public class MainActivity extends Activity {
                         long parsed = Long.parseLong(announcedPrice);
                         if (parsed <= 15000000) price = Long.toString(parsed);
                     }
-                    String code = out.toString("UTF-8") + "\nPromise.resolve().then(()=>window.__satoOpenAlbumMarket(" + definitionId + "," + autoCheapest + "," + price + ")).then(r=>SatoFcApp.marketResult(true,r.message)).catch(e=>SatoFcApp.marketResult(false,e.message||'Marché FC indisponible.'));";
+                    String code = out.toString("UTF-8") + "\nPromise.resolve().then(()=>window.__satoOpenAlbumMarket(" + definitionId + "," + autoCheapest + "," + price + "," + getPreferences(MODE_PRIVATE).getInt("album-price-below", 300) + "," + getPreferences(MODE_PRIVATE).getInt("album-price-above", 300) + ")).then(r=>SatoFcApp.marketResult(true,r.message)).catch(e=>SatoFcApp.marketResult(false,e.message||'Marché FC indisponible.'));";
                     fc.evaluateJavascript(code, null);
                 } catch (Exception e) { albumMarketRunning = false; toast("Recherche du marché indisponible. Réessaie."); }
             });
