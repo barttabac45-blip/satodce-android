@@ -81,12 +81,14 @@ public class MainActivity extends Activity {
     String profileName(int slot) { return profiles().getString("email-" + slot, profiles().getString("name-" + slot, "Adresse e-mail à connecter")); }
     void chooseProfile() {
         if (Build.VERSION.SDK_INT < 28) { toast("Les profils séparés nécessitent Android 9 ou plus récent."); return; }
-        String[] labels = new String[5];
+        String[] labels = new String[profileCount() > 1 ? 6 : 5];
         for (int slot = 0; slot < 4; slot++) labels[slot] = (slot == profileSlot() ? "✓ " : "") + profileName(slot) + (profiles().getBoolean("created-" + slot, slot == 0) ? "" : " · Ajouter");
         labels[4] = "Renseigner l’adresse e-mail";
+        if (labels.length > 5) labels[5] = "Supprimer un compte";
         new AlertDialog.Builder(this).setTitle("Comptes FC + SatoDCE")
             .setItems(labels, (dialog, selected) -> {
                 if (selected == 4) { nameProfile(profileSlot(), false); return; }
+                if (selected == 5) { chooseProfileToDelete(); return; }
                 if (!profiles().getBoolean("created-" + selected, selected == 0)) nameProfile(selected, true);
                 else switchProfile(selected);
             }).setNegativeButton("Fermer", null).show();
@@ -103,6 +105,39 @@ public class MainActivity extends Activity {
                 profiles().edit().putString("email-" + slot, label).putBoolean("created-" + slot, true).commit();
                 if (open) switchProfile(slot);
             }).setNegativeButton("Annuler", null).show();
+    }
+    /** The open profile cannot delete itself: its WebViews hold the data being erased. */
+    void chooseProfileToDelete() {
+        java.util.List<Integer> slots = new java.util.ArrayList<>();
+        for (int slot = 0; slot < 4; slot++) if (slot != profileSlot() && profiles().getBoolean("created-" + slot, slot == 0)) slots.add(slot);
+        String[] labels = new String[slots.size()];
+        for (int i = 0; i < labels.length; i++) labels[i] = profileName(slots.get(i));
+        new AlertDialog.Builder(this).setTitle("Supprimer un compte")
+            .setMessage(labels.length == 0 ? "Pour supprimer le compte ouvert, passe d’abord sur un autre compte." : null)
+            .setItems(labels, (dialog, selected) -> {
+                int slot = slots.get(selected);
+                new AlertDialog.Builder(this).setTitle("Supprimer " + profileName(slot) + " ?")
+                    .setMessage("Ce profil est déconnecté d’EA et de SatoDCE sur cet appareil et ses réglages sont effacés. Le compte SatoDCE et sa sauvegarde en ligne sont conservés.")
+                    .setPositiveButton("Supprimer", (d, w) -> deleteProfile(slot))
+                    .setNegativeButton("Annuler", null).show();
+            }).setNegativeButton("Fermer", null).show();
+    }
+    void deleteProfile(int slot) {
+        Class<?>[] activities = {MainActivity.class, ProfileOneActivity.class, ProfileTwoActivity.class, ProfileThreeActivity.class};
+        android.content.SharedPreferences.Editor edit = profiles().edit().remove("email-" + slot).remove("name-" + slot).putBoolean(SatoApplication.WIPE + slot, true);
+        if (slot != 0) edit.remove("created-" + slot);
+        edit.putInt("active", profileSlot()).commit();
+        // Close that profile's screen and process; its data is erased when it next starts, before any WebView.
+        android.app.ActivityManager manager = (android.app.ActivityManager) getSystemService(ACTIVITY_SERVICE);
+        for (android.app.ActivityManager.AppTask task : manager.getAppTasks()) {
+            android.content.ComponentName base = task.getTaskInfo().baseActivity;
+            if (base != null && base.getClassName().equals(activities[slot].getName())) task.finishAndRemoveTask();
+        }
+        String process = getPackageName() + (slot == 0 ? "" : ":profile" + slot);
+        java.util.List<android.app.ActivityManager.RunningAppProcessInfo> running = manager.getRunningAppProcesses();
+        if (running != null) for (android.app.ActivityManager.RunningAppProcessInfo info : running)
+            if (info.processName.equals(process) && info.pid != android.os.Process.myPid()) android.os.Process.killProcess(info.pid);
+        toast("Compte supprimé de cet appareil.");
     }
     void switchProfile(int slot) {
         if (slot == profileSlot()) return;
