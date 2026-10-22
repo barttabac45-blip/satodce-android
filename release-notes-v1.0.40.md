@@ -1,0 +1,1 @@
+FIFA fait foi par défaut lors de la synchronisation de collection : les coches erronées sont retirées. Réglage Album pour conserver les coches manuelles si souhaité, avec explication. Compteur des cartes récupérées et barre de progression dans les albums.
