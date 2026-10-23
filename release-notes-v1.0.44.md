@@ -1,0 +1,1 @@
+Synchro : les cartes dont EA ne fournit pas le nom ne s'affichent plus en ---. Contient aussi la suppression de compte et les messages de synchro.

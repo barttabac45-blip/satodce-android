@@ -47,7 +47,8 @@
     const loan=Number(p.loans);const activeEvolution=read(p,'isActiveInAcademy')===true||read(p,'isActiveInTimedEvolution')===true;const cardType=read(p,'isLegend')===true?'icon':read(p,'isLeagueHeroItem')===true?'hero':read(p,'isSpecial')===true||![0,1].includes(rareFlag)?'special':'normal';
     const pos=[...new Set((read(p,'getBasePossiblePositions')??p.basePossiblePositions??[p.preferredPosition]).map(x=>positions[x]).filter(Boolean))];
     if(!(loan<0)||!Number.isFinite(rating)||!pos.length){skipped++;continue;}
-    const data=p._staticData??{};const name=data.knownAs||data.name||[data.firstName,data.lastName].filter(Boolean).join(' ')||`Joueur ${p.definitionId}`;
+    const data=p._staticData??{};// EA sends placeholders such as "---" for some new cards: skip names without a letter.
+    const real=v=>typeof v==='string'&&/\p{L}/u.test(v)?v:'';const name=real(data.knownAs)||real(data.name)||real([data.firstName,data.lastName].filter(Boolean).join(' '))||`Joueur ${p.definitionId}`;
     if(p.teamId==null||p.leagueId==null||p.nationId==null){skipped++;continue;}
     const assets=window.AssetLocationUtils;const absolute=value=>{try{const u=new URL(value,location.href||location.origin);return u.protocol==='https:'?u.href:'';}catch{return '';}};
     const image=(method,...args)=>{try{return absolute(assets?.[method]?.(...args));}catch{return '';}};
