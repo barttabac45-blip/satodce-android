@@ -1,0 +1,1 @@
+Réglages : la ligne « Rejoindre le Discord » est retirée ; le Discord reste accessible par le logo en haut du site SatoDCE.

@@ -58,7 +58,6 @@ import java.util.concurrent.Executors;
 public class MainActivity extends Activity {
     static final String SITE = BuildConfig.SITE;
     static final String FC_URL = "https://www.ea.com/ea-sports-fc/ultimate-team/web-app/";
-    static final String DISCORD_URL = "https://discord.gg/b6B8U2VMyG";
     static final int FILE_REQUEST = 41;
     static final String ALLOW_PORTRAIT = "(()=>{if(document.getElementById('satodce-portrait'))return;const s=document.createElement('style');s.id='satodce-portrait';s.textContent='.ui-orientation-warning,.ea-dialog-view-type--rotate{display:none!important}';(document.head||document.documentElement).append(s);})()";
 
@@ -661,12 +660,6 @@ public class MainActivity extends Activity {
 
         @JavascriptInterface
         public void checkUpdate() { main.post(() -> updater.check(true)); }
-
-        /** Fixed invitation: the FC page must not be able to open arbitrary links. */
-        @JavascriptInterface
-        public void openDiscord() {
-            main.post(() -> { try { startActivity(new Intent(Intent.ACTION_VIEW, Uri.parse(DISCORD_URL))); } catch (Exception ignored) { } });
-        }
 
 
         @JavascriptInterface
