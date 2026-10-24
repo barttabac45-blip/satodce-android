@@ -1,0 +1,1 @@
+Réglages : nouvelle ligne « Rejoindre le Discord » en haut, pour suivre les nouveautés, demander de l’aide et proposer des idées.
