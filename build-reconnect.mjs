@@ -3,7 +3,7 @@ import {connectSatoDCE} from './connector/bridge.mjs';
 import {marketHelpersCode} from './connector/market-code.mjs';
 import {albumMarketCode} from './connector/album-market-code.mjs';
 const reader=await readFile(new URL('./connector/fc-reader.js',import.meta.url),'utf8');
-// Version 3 prevents older hosted sites from automatically importing on hello.
+// The resume flag identifies a native startup; current sites automatically sync after login.
 const bridge=connectSatoDCE.toString().replace("version:4,intent,", "version:3,resume:true,intent,");
 const source=`(()=>{${reader}\n(${bridge})('https://satodce.fr','resume',true);})();`;
 const dir=new URL('./app/src/main/assets/',import.meta.url);

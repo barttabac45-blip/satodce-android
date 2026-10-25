@@ -44,8 +44,9 @@ Les pauses variables ne garantissent pas que cette automatisation soit acceptée
 
 La connexion à ton compte SatoDCE (Google) se fait dans le navigateur du téléphone, puis l’appli reprend la main automatiquement.
 
-La connexion FC conserve les cartes enregistrées sans lancer de synchronisation.
-Appuie sur **Équipe** pour importer ou actualiser ton club, ton équipe et les DCE.
+Au lancement, une fois les comptes EA et SatoDCE connectés, le club et l’équipe
+sont synchronisés automatiquement, puis le catalogue des DCE est actualisé.
+Le bouton **Mon club** permet de relancer cette synchronisation à tout moment.
 Si EA demande une nouvelle connexion, reconnecte-toi dans l’onglet FC ; le lien
 reprend ensuite automatiquement. Les cartes choisies sont vérifiées dans FC au
 moment du placement.

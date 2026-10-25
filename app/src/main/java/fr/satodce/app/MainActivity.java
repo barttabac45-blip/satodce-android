@@ -543,7 +543,7 @@ public class MainActivity extends Activity {
                         for (int n; (n = in.read(buffer)) > 0;) out.write(buffer, 0, n);
                         view.evaluateJavascript(out.toString("UTF-8"), null);
                     } catch (Exception ignored) { }
-                    view.evaluateJavascript("(()=>{try{const d=JSON.parse(localStorage.getItem('satodce-v1'));if(d?.players?.length&&!d.isDemo)SatoApp.enableReconnect();}catch{}if(window.__satoNativeReturn)return;window.__satoNativeReturn=true;window.addEventListener('message',e=>{if(e.origin!=='https://www.ea.com'||e.source!==window.opener||e.data?.type!=='SATODCE_FC'||e.data.token!==new URLSearchParams(location.search).get('fc'))return;if(e.data.kind==='filled')SatoApp.showFc();if(e.data.kind==='connected'&&e.data.resume)setTimeout(()=>{const s=document.querySelector('#fc-status');if(s)s.textContent='FC reconnecté · Club enregistré conservé.';},0);});})()", null);
+                    view.evaluateJavascript("(()=>{try{const d=JSON.parse(localStorage.getItem('satodce-v1'));if(d?.players?.length&&!d.isDemo)SatoApp.enableReconnect();}catch{}if(window.__satoNativeReturn)return;window.__satoNativeReturn=true;window.addEventListener('message',e=>{if(e.origin!=='https://www.ea.com'||e.source!==window.opener||e.data?.type!=='SATODCE_FC'||e.data.token!==new URLSearchParams(location.search).get('fc'))return;if(e.data.kind==='filled')SatoApp.showFc();if(e.data.kind==='connected'&&e.data.resume)setTimeout(()=>{const s=document.querySelector('#fc-status');if(s)s.textContent='FC reconnecté · Synchronisation automatique du club…';},0);});})()", null);
                 }
             }
 
